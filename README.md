@@ -19,6 +19,8 @@
 - Open up a command prompt and run the program.
 - Change to the directory the program is placed and run it.
 - Open the graphical file manager and go to the C://Users/Public/Logs directory to watch the program in action.
+- After files are encrypted and sent to email, download them place them in the directory specified in
+  decryptFile.py and run the program in command prompt.
 
 ## Purpose
 > As a Network and Infosec enthusiast the purpose of this project was originally to make a keylogger. 
