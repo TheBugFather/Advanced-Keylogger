@@ -13,8 +13,8 @@
 ## Installation
 - Google Python downloads and install version 3.8.
 - Make sure the associated modules are installed.
-- At line 98 enter your full email( blahblah@gmail.com ).
-- At line 99 enter the password for that email account.
+- At line 81 enter your full email( blahblah@gmail.com ).
+- At line 82 enter the password for that email account.
 - Make sure in the gmail account settings that the allow less secure apps is on.
 - Open up a command prompt and run the program.
 - Change to the directory the program is placed and run it.
