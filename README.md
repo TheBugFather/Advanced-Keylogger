@@ -13,11 +13,11 @@
 ## Installation
 - Google Python downloads and install version 3.8.
 - Make sure the associated modules are installed.
-- At line 81 enter your full email( blahblah@gmail.com ).
+- At line 81 enter your full email( username@gmail.com ).
 - At line 82 enter the password for that email account.
 - Make sure in the gmail account settings that the allow less secure apps is on.
 - Open up a command prompt and run the program.
-- Change to the directory the program is placed and run it.
+- Change to the directory the program is placed and execute it.
 - Open the graphical file manager and go to the C://Users/Public/Logs directory to watch the program in action.
 - After files are encrypted and sent to email, download them place them in the directory specified in
   decryptFile.py and run the program in command prompt.
@@ -25,8 +25,8 @@
 ## Purpose
 > As a Network and Infosec enthusiast the purpose of this project was originally to make a keylogger. 
 > I decided to see what else can be incorporated and the project evolved into more of the realm of full blown spyware.
-> This is a project for learning and experimentation; anyone considering using this for unethical purposes
-> go elsewhere. Only use on this program on personally owned systems or anyone that allows permission of use
+> This is a project for learning and experimentation; unethical use is strictly prohibited.
+> Only use on this program on personally owned systems or anyone that allows permission of use
 > as a demonstration for raising awareness.
 
 ## How it works
