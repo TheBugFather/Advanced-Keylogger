@@ -6,8 +6,8 @@ This program runs on Windows, written in Python 3.8
 
 ## Installation
 - Run the setup.py script to install all external modules
-- At line 81 enter your full email( username@gmail.com )
-- At line 82 enter the password for that email account
+- At line 167 enter your full email( username@gmail.com )
+- At line 168 enter the password for that email account
 - Make sure in the gmail account settings that to allow less secure apps is on (Critical for using Google API)
 - Open up a command prompt and run the program
 - Change to the directory the program is placed and execute it
