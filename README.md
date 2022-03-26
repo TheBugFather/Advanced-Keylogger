@@ -1,46 +1,41 @@
+# Advanced Keylogger
+![alt text](https://github.com/ngimb64/Advanced-Keylogger/blob/master/AdvancedKeylogger.png?raw=true)
+
 ## Prereqs
-> To make sure this program runs as designed Python 3.8 
-> should be installed. This project has many modules incorporated,
-> some of which are not included by default. Any missing modules
-> have to be installed with PIP before the program can run. I recommend
-> simply googling the module name and finding the documentation. The 
-> PIP command for installation is usually one of the first things mentioned.
-> Also with Python it is common to have multiple modules with a similar names.
-> So if errors are being raised about not having a certain module it is
-> most likely the wrong module with a similar name to the one that is required
-> was installed instead of the required module.
+This program runs on Windows, written in Python 3.8
 
 ## Installation
-- Google Python downloads and install version 3.8.
-- Make sure the associated modules are installed.
-- At line 81 enter your full email( username@gmail.com ).
-- At line 82 enter the password for that email account.
-- Make sure in the gmail account settings that the allow less secure apps is on.
-- Open up a command prompt and run the program.
-- Change to the directory the program is placed and execute it.
-- Open the graphical file manager and go to the C://Users/Public/Logs directory to watch the program in action.
+- Run the setup.py script to install all external modules
+- At line 81 enter your full email( username@gmail.com )
+- At line 82 enter the password for that email account
+- Make sure in the gmail account settings that to allow less secure apps is on (Critical for using Google API)
+- Open up a command prompt and run the program
+- Change to the directory the program is placed and execute it
+- Open the graphical file manager and go to the C://Users/Public/Logs directory to watch the program in action
 - After files are encrypted and sent to email, download them place them in the directory specified in
   decryptFile.py and run the program in command prompt.
 
 ## Purpose
 > As a Network and Infosec enthusiast the purpose of this project was originally to make a keylogger. 
-> I decided to see what else can be incorporated and the project evolved into more of the realm of full blown spyware.
+> I decided to see what else can be incorporated and the project evolved into more of the realm of spyware.
 > This is a project for learning and experimentation; unethical use is strictly prohibited.
 > Only use on this program on personally owned systems or anyone that allows permission of use
 > as a demonstration for raising awareness.
+> It is intentionally not weaponized making it impossible to use on remote systems and has to manually be installed.
+> Tutorial can be found at https://cybr.com/ethical-hacking-archives/how-i-made-a-python-keylogger-that-sends-emails/
 
 ## How it works
-- Creates a directory to temporarily store information to exfitrate
-- Gets all the essential network information -> stores to log file			(takes about a minute in a half)
+- Creates a directory to temporarily store information to exfiltrate
+- Gets all the essential network information -> stores to log file &nbsp;&nbsp;&nbsp;&nbsp;(takes about a minute in a half)
 - Gets the wireless network ssid's and passwords in XML data file
 - Retrieves system hardware and running process/service info
 - If the clipboard is activated and contains anything -> stores to log file
 - Browsing history is retrieved as a JSON data file then dumped into a log file
-- Then using multiprocessing 4 features work together simultaniously:			(set to 5 minutes for demo but timeouts and ranges can be adjusted)
-1. Logs pressed keys
-2. Takes screenshots every 5 seconds
-3. Records microphone in one minute segments
-4. Takes webcam picture every 5 seconds
+- Then using multiprocessing 4 features work together simultaneously: &nbsp;&nbsp;&nbsp;&nbsp; (set to 5 minutes for demo but timeouts and ranges can be adjusted)
+1. Log pressed keys
+2. Take screenshots every 5 seconds
+3. Record microphone in one minute segments
+4. Take webcam picture every 5 seconds
 - After all the .txt and .xml files are grouped together and encrypted to protect sensitive data
 - Then by individual directory, the files are grouped and sent through email by file type with regex magic
-- Finally the Log directory is deleted and the program loops back to the beginning to repeat the same process
+- Finally, the Log directory is deleted and the program loops back to the beginning to repeat the same process

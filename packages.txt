@@ -1,0 +1,9 @@
+opencv-python==3.4.17.61
+requests==2.25.1
+sounddevice==0.4.2
+pywin32==300
+browserhistory==0.1.2
+cryptography==3.4.6
+Pillow==8.1.0
+pynput==1.7.3
+scipy==1.6.1
