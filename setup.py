@@ -1,13 +1,13 @@
 # Built-in modules #
 import os
 import os.path
-import re
-from subprocess import Popen, PIPE, SubprocessError, TimeoutExpired, CalledProcessError
 import sys
+import venv
+from subprocess import Popen, PIPE, SubprocessError, TimeoutExpired, CalledProcessError
 from threading import Thread
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
-import venv
+
 
 # Global variables #
 PACKAGE_FILENAME = 'packages.txt'
