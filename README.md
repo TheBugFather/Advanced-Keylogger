@@ -1,6 +1,12 @@
 # Advanced Keylogger
 ![alt text](https://github.com/ngimb64/Advanced-Keylogger/blob/master/AdvancedKeylogger.png?raw=true)
 
+## Notice
+> This tool may be used for legal purposes only.  Users take full responsibility
+> for any actions performed using this tool.  The author accepts no liability
+> for damage caused by this tool.  If these terms are not acceptable to you, then
+> do not use this tool.
+
 ## Prereqs
 This program runs on Windows, written in Python 3.8
 
@@ -26,10 +32,6 @@ This program runs on Windows, written in Python 3.8
 ## Purpose
 > As a Network and Infosec enthusiast the purpose of this project was originally to make a keylogger.
 > I decided to see what else can be incorporated and the project evolved into more of the realm of spyware.
-> This is a project for learning and experimentation; unethical use is strictly prohibited.
-> Only use on this program on personally owned systems or anyone that allows permission of use
-> as a demonstration for raising awareness.
-> It is intentionally not weaponized making it impossible to use on remote systems and has to manually be installed.
 > Tutorial can be found at https://cybr.com/ethical-hacking-archives/how-i-made-a-python-keylogger-that-sends-emails/
 
 ## How it works
