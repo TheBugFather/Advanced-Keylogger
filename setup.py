@@ -10,8 +10,13 @@ from urllib.request import urlretrieve
 
 
 # Global variables #
-PACKAGE_FILENAME = 'packages.txt'
 
+# If the OS is Windows #
+if os.name == 'nt':
+    PACKAGE_FILENAME = 'windows_packages.txt'
+# If the OS is Linux #
+else:
+    PACKAGE_FILENAME = 'linux_packages.txt'
 
 class ExtendedEnvBuilder(venv.EnvBuilder):
     """
@@ -60,8 +65,20 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         if not self.nopip and not self.nodist:
             self.install_pip(context)
 
-        # Upgrade pip to most recent version (60 second timeout) #
-        command = Popen([f'{context.env_dir}\\Scripts\\pip.exe', 'install', '--upgrade', 'pip'])
+        # Get the current working dir #
+        path = os.getcwd()
+
+        # If the OS is Windows #
+        if os.name == 'nt':
+            # Upgrade pip to most recent version (60 second timeout) #
+            command = Popen([f'{context.env_dir}\\Scripts\\pip.exe', 'install', '--upgrade', 'pip'])
+            package_path = f'{path}\\{PACKAGE_FILENAME}'
+        # If the OS is Linux #
+        else:
+            # Upgrade pip to most recent version (60 second timeout) #
+            command = Popen([f'{context.env_dir}/bin/pip', 'install', '--upgrade', 'pip'])
+            package_path = f'{path}/{PACKAGE_FILENAME}'
+
         try:
             # Timeout child process after 60 seconds #
             command.communicate(timeout=60)
@@ -70,12 +87,16 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
             command.communicate()
 
         # If the package list file exists and has read access #
-        if os.path.isfile(f'./{PACKAGE_FILENAME}') and os.access(f'./{PACKAGE_FILENAME}', os.R_OK):
-            # Get the current working directory #
-            path = os.getcwd()
+        if os.path.isfile(package_path) and os.access(package_path, os.R_OK):
+            # If the OS is Windows #
+            if os.name == 'nt':
+                # Install modules in packages.txt with pip #
+                command = Popen([f'{context.env_dir}\\Scripts\\pip.exe', 'install', '-r', f'{path}\\{PACKAGE_FILENAME}'])
+            # If the OS is Linux #
+            else:
+                # Install modules in packages.txt with pip #
+                command = Popen([f'{context.env_dir}/bin/pip', 'install', '-r', f'{path}/{PACKAGE_FILENAME}'])
 
-            # Install packages in packages.txt with pip #
-            command = Popen([f'{context.env_dir}\\Scripts\\pip.exe', 'install', '-r', f'{path}\\{PACKAGE_FILENAME}'])
             try:
                 # Timeout child process after 5 minutes #
                 command.communicate(timeout=300)

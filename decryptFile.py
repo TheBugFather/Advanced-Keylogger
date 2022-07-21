@@ -1,31 +1,103 @@
+# Built-in modules #
 import logging
 import os
 import re
+import sys
+
+# External modules #
 from cryptography.fernet import Fernet
 
 
-if __name__ == '__main__':
-    try:
-        path = 'C:/Users/Public/Logs/'
-        encrypted_files = [ 'e_network_wifi.txt', 'e_system_info.txt', 'e_clipboard_info.txt', 
-                            'e_browser.txt', 'e_key_logs.txt' ]
-        regex = re.compile(r'.+\.xml$')
+'''
+########################################################################################################################
+Name:       PrintErr
+Purpose:    Displays the passed in error message through stderr
+Parameters: The error message to be displayed.
+Returns:    None
+########################################################################################################################
+'''
+def PrintErr(msg: str):
+    print(f'\n* [ERROR] {msg} *\n', file=sys.stderr)
 
-        for _, _, file_names in os.walk(path):
-            [encrypted_files.append(file) for file in file_names if regex.match(file)]
 
-        key = b'T2UnFbwxfVlnJ1PWbixcDSxJtpGToMKotsjR4wsSJpM='
+'''
+########################################################################################################################
+Name:       main
+Purpose:    Decrypts the encrypted contents in the DecryptDock Folder.
+Parameters: None
+Returns:    None
+########################################################################################################################
+'''
+def main():
+    encrypted_files = ['e_network_info.txt', 'e_system_info.txt', 'e_browser_info.txt', 'e_key_logs.txt']
 
-        for file_decrypt in encrypted_files:
-            with open(path + file_decrypt, 'rb') as x:
-                data = x.read()
+    # If the OS is Windows #
+    if os.name == 'nt':
+        re_xml = re.compile(r'.{1,255}\.xml$')
+
+        # Add any of the xml files in the dir to the encrypted files list #
+        [encrypted_files.append(file.name) for file in os.scandir(decrypt_path) if re_xml.match(file.name)]
+
+        encrypted_files.append('e_clipboard_info.txt')
+    else:
+        encrypted_files.append('e_wifi_info.txt')
+
+    key = b'T2UnFbwxfVlnJ1PWbixcDSxJtpGToMKotsjR4wsSJpM='
+
+    # Iterate through the files to be decrypted #
+    for file_decrypt in encrypted_files:
+        # If the OS is Windows #
+        if os.name == 'nt':
+            crypt_path = f'{decrypt_path}\\{file_decrypt}'
+            plain_path = f'{decrypt_path}\\{file_decrypt[2:]}'
+        # If the OS is Linux #
+        else:
+            crypt_path = f'{decrypt_path}/{file_decrypt}'
+            plain_path = f'{decrypt_path}/{file_decrypt[2:]}'
+
+        try:
+            # Read the encrypted file data #
+            with open(crypt_path, 'rb') as in_file:
+                data = in_file.read()
+
+            # Decrypt the encrypted file data #
             decrypted = Fernet(key).decrypt(data)
-            with open(path + file_decrypt[2:], 'ab') as loot:
-                loot.write(decrypted)
-            os.remove(path + file_decrypt)
 
+            # Write the decrypted data to fresh file #
+            with open(plain_path, 'wb') as loot:
+                loot.write(decrypted)
+
+            # Remove original encrypted files #
+            os.remove(crypt_path)
+
+        # If file IO error occurs #
+        except (IOError, OSError) as io_err:
+            PrintErr(f'Error occurred during {file_decrypt} decryption: {io_err}')
+
+
+if __name__ == '__main__':
+    # Get the current working dir #
+    cwd = os.getcwd()
+
+    # If the OS is Windows #
+    if os.name == 'nt':
+        decrypt_path = f'{cwd}\\DecryptDock'
+    # If the OS is Linux #
+    else:
+        decrypt_path = f'{cwd}/DecryptDock'
+
+    # If the decryption file dock does not exist #
+    if not os.path.isdir(decrypt_path):
+        # Create missing DecryptDock #
+        os.mkdir(decrypt_path)
+        # Print error message and exit #
+        PrintErr('DecryptDock created due to not existing .. place '
+                 'encrypted components in it and restart program')
+        sys.exit(1)
+
+    try:
+        main()
     except KeyboardInterrupt:
         print('* Ctrl + C detected...program exiting *')
 
-    except Exception as ex:
-        logging.exception('* Error Occured: {}*'.format(ex))
+    sys.exit(0)

@@ -1,2 +1,9 @@
 # Ignore Pycharm env #
 .idea/
+
+# Ignore virtual environment files #
+venv/
+
+# Ignore DecryptDock contents except .keep file #
+DecryptDock/*
+!DecryptDock/.keep
