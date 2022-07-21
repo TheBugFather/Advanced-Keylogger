@@ -46,29 +46,20 @@ def main():
 
     # Iterate through the files to be decrypted #
     for file_decrypt in encrypted_files:
-        # If the OS is Windows #
-        if os.name == 'nt':
-            crypt_path = f'{decrypt_path}\\{file_decrypt}'
-            plain_path = f'{decrypt_path}\\{file_decrypt[2:]}'
-        # If the OS is Linux #
-        else:
-            crypt_path = f'{decrypt_path}/{file_decrypt}'
-            plain_path = f'{decrypt_path}/{file_decrypt[2:]}'
-
         try:
             # Read the encrypted file data #
-            with open(crypt_path, 'rb') as in_file:
+            with open(f'{decrypt_path}{file_decrypt}', 'rb') as in_file:
                 data = in_file.read()
 
             # Decrypt the encrypted file data #
             decrypted = Fernet(key).decrypt(data)
 
             # Write the decrypted data to fresh file #
-            with open(plain_path, 'wb') as loot:
+            with open(f'{decrypt_path}{file_decrypt[2:]}', 'wb') as loot:
                 loot.write(decrypted)
 
             # Remove original encrypted files #
-            os.remove(crypt_path)
+            os.remove(f'{decrypt_path}{file_decrypt}')
 
         # If file IO error occurs #
         except (IOError, OSError) as io_err:
@@ -81,10 +72,10 @@ if __name__ == '__main__':
 
     # If the OS is Windows #
     if os.name == 'nt':
-        decrypt_path = f'{cwd}\\DecryptDock'
+        decrypt_path = f'{cwd}\\DecryptDock\\'
     # If the OS is Linux #
     else:
-        decrypt_path = f'{cwd}/DecryptDock'
+        decrypt_path = f'{cwd}/DecryptDock/'
 
     # If the decryption file dock does not exist #
     if not os.path.isdir(decrypt_path):
@@ -97,6 +88,7 @@ if __name__ == '__main__':
 
     try:
         main()
+
     except KeyboardInterrupt:
         print('* Ctrl + C detected...program exiting *')
 

