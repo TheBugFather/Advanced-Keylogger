@@ -342,7 +342,7 @@ Returns:    Nothing
 def main():
     # If the OS is Windows #
     if os.name == 'nt':
-        export_path = 'C:\\Tmp'
+        export_path = 'C:\\Tmp\\'
         # Ensure the tmp exfiltration dir exists #
         pathlib.Path(export_path).mkdir(parents=True, exist_ok=True)
 
