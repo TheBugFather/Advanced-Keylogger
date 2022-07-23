@@ -9,7 +9,7 @@
 > do not use this tool.
 
 ## Prereqs
-This program runs on Windows, written in Python 3.8
+This program runs on Windows and Linux, written in Python 3.8
 
 ## Purpose
 As a Network and Infosec enthusiast the purpose of this project was originally to make a keylogger.

