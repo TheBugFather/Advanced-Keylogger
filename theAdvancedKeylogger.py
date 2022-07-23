@@ -132,8 +132,8 @@ Returns:    Nothing
 '''
 def SendMail(path: str, re_xml, re_txt, re_png, re_jpg, re_wav):
     # User loging information #
-    email_address = 'ngimbel64@gmail.com'          # <--- Enter your email address
-    password = 'kkkieveeyerddgxf'               # <--- Enter email password
+    email_address = ''          # <--- Enter your email address
+    password = ''               # <--- Enter email password
 
     # Create message object with text and attachments #
     msg = MIMEMultipart()
