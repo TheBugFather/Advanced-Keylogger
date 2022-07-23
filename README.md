@@ -1,4 +1,5 @@
 # Advanced Keylogger
+![alt text](https://github.com/ngimb64/Advanced-Keylogger/blob/master/Advanced_Keylogger.png?raw=true)
 ![alt text](https://github.com/ngimb64/Advanced-Keylogger/blob/master/AdvancedKeylogger.png?raw=true)
 
 ## Notice
