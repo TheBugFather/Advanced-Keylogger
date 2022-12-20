@@ -3,6 +3,7 @@
 import os
 import re
 import sys
+from pathlib import Path
 
 # External modules #
 from cryptography.fernet import Fernet
@@ -32,7 +33,7 @@ def main():
         re_xml = re.compile(r'.{1,255}\.xml$')
 
         # Add any of the xml files in the dir to the encrypted files list #
-        [encrypted_files.append(file.name) for file in os.scandir(decrypt_path)
+        [encrypted_files.append(file.name) for file in os.scandir(str(decrypt_path.resolve()))
          if re_xml.match(file.name)]
 
         encrypted_files.append('e_clipboard_info.txt')
@@ -43,44 +44,41 @@ def main():
 
     # Iterate through the files to be decrypted #
     for file_decrypt in encrypted_files:
+        crypt_path = decrypt_path / file_decrypt
+        plain_path = decrypt_path / file_decrypt[2:]
         try:
             # Read the encrypted file data #
-            with open(f'{decrypt_path}{file_decrypt}', 'rb') as in_file:
+            with crypt_path.open('rb') as in_file:
                 data = in_file.read()
 
             # Decrypt the encrypted file data #
             decrypted = Fernet(key).decrypt(data)
 
             # Write the decrypted data to fresh file #
-            with open(f'{decrypt_path}{file_decrypt[2:]}', 'wb') as loot:
+            with plain_path.open('wb') as loot:
                 loot.write(decrypted)
 
             # Remove original encrypted files #
-            os.remove(f'{decrypt_path}{file_decrypt}')
+            os.remove(str(crypt_path.resolve()))
 
         # If file IO error occurs #
         except (IOError, OSError) as io_err:
             print_err(f'Error occurred during {file_decrypt} decryption: {io_err}')
+            sys.exit(1)
 
 
 if __name__ == '__main__':
     # Get the current working dir #
-    cwd = os.getcwd()
-
-    # If the OS is Windows #
-    if os.name == 'nt':
-        decrypt_path = f'{cwd}\\DecryptDock\\'
-    # If the OS is Linux #
-    else:
-        decrypt_path = f'{cwd}/DecryptDock/'
+    cwd = Path('.')
+    decrypt_path = cwd / 'DecryptDock'
 
     # If the decryption file dock does not exist #
-    if not os.path.isdir(decrypt_path):
+    if not decrypt_path.exists():
         # Create missing DecryptDock #
-        os.mkdir(decrypt_path)
+        decrypt_path.mkdir()
         # Print error message and exit #
-        print_err('DecryptDock created due to not existing .. place '
-                 'encrypted components in it and restart program')
+        print_err('DecryptDock created due to not existing .. place encrypted components in it '
+                  'and restart the program')
         sys.exit(1)
 
     try:

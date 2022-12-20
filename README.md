@@ -13,11 +13,12 @@
 > If these terms are not acceptable to you, then do not use this tool.
 
 ## Prereqs
-This program runs on Windows and Linux, written in Python 3.8
+This program runs on Windows 10 and Debian-based Linux, written in Python 3.8 and updated to version 3.10.6
 
 ## Purpose
 As a network and info-sec enthusiast the purpose of this project was originally to make a keylogger.<br>
-I decided to see what else can be incorporated and the project evolved into more of the realm of spyware.<br>
+I decided to see what else can be incorporated and the project evolved into more of the functionality of spyware.<br>
+Despite such functionality, the program does not attempt persistence or modify the registry, so it can be run outside of sandboxes.<br>
 Tutorial can be found at https://cybr.com/ethical-hacking-archives/how-i-made-a-python-keylogger-that-sends-emails/
 
 ## How it works
@@ -41,14 +42,18 @@ Tutorial can be found at https://cybr.com/ethical-hacking-archives/how-i-made-a-
 ## Installation
 - Run the setup.py script to build a virtual environment and install all external packages in the created venv.
 
-> Example: `python3 setup.py venv`
+> Examples:<br> 
+>       &emsp;&emsp;- Windows:  `python setup.py venv`<br>
+>       &emsp;&emsp;- Linux:  `python3 setup.py venv`
 
 - Once virtual env is built traverse to the (Scripts-Windows or bin-Linux) directory in the environment folder just created.
-- For Windows in the Scripts directory, for execute the `./activate` script to activate the virtual environment.
-- For Linux in the bin directory, run the command `source activate` to activate the virtual environment.
+- For Windows, in the venv\Scripts directory, execute `activate` or `activate.bat` script to activate the virtual environment.
+- For Linux, in the venv/bin directory, execute `source activate` to activate the virtual environment.
+- If for some reason issues are experienced with the setup script, the alternative is to manually create an environment, activate it, then run pip install -r packages.txt in project root.
+- To exit from the virtual environment when finished, execute `deactivate`.
 
 ## How to use
-- In google account, set up multi-factor authentication and generate application password for Gmail
+- In google account, set up multi-factor authentication and generate application password for Gmail to allow API usage
 - At the beginning of send_mail() function enter your full email( username@gmail.com ) and generated app password
 - Open up a command prompt and run the program
 - Change to the directory the program is placed and execute it
