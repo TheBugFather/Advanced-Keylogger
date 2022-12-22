@@ -2,7 +2,6 @@
 """ Built-in modules """
 import argparse
 import os
-import os.path
 import sys
 import venv
 from pathlib import Path
@@ -12,12 +11,8 @@ from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
 
-# If the OS name is Windows #
-if os.name == 'nt':
-    PACKAGE_FILENAME = 'windows_packages.txt'
-# IF the OS name is Linux #
-else:
-    PACKAGE_FILENAME = 'linux_packages.txt'
+# Global variables #
+PACKAGE_FILENAME = 'packages.txt'
 
 
 def system_cmd(cmd_args: list, timeout_secs: int):
@@ -134,15 +129,11 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         command = [str(pip_path.resolve()), 'install', '--upgrade', 'pip']
         system_cmd(command, 60)
 
-        # If the package list file exists and has read access #
-        if package_path.exists() and os.access(str(package_path.resolve()), os.R_OK):
+        # If the package list file exists #
+        if package_path.exists():
             # Execute pip -r into venv based on package list #
             command = [str(pip_path.resolve()), 'install', '-r', str(package_path.resolve())]
             system_cmd(command, 300)
-        # If the package list file is not accessible #
-        else:
-            print_err(f'Unable to access external package file {str(package_path.resolve())}')
-            sys.exit(4)
 
     def reader(self, stream, context):
         """
