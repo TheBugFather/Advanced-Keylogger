@@ -4,7 +4,6 @@ import os
 import re
 import sys
 from pathlib import Path
-
 # External modules #
 from cryptography.fernet import Fernet
 
@@ -33,7 +32,7 @@ def main():
         re_xml = re.compile(r'.{1,255}\.xml$')
 
         # Add any of the xml files in the dir to the encrypted files list #
-        [encrypted_files.append(file.name) for file in os.scandir(str(decrypt_path.resolve()))
+        [encrypted_files.append(file.name) for file in os.scandir(decrypt_path)
          if re_xml.match(file.name)]
 
         encrypted_files.append('e_clipboard_info.txt')
@@ -44,6 +43,7 @@ def main():
 
     # Iterate through the files to be decrypted #
     for file_decrypt in encrypted_files:
+        # Set the encrypted and decrypted file paths #
         crypt_path = decrypt_path / file_decrypt
         plain_path = decrypt_path / file_decrypt[2:]
         try:
@@ -59,18 +59,17 @@ def main():
                 loot.write(decrypted)
 
             # Remove original encrypted files #
-            os.remove(str(crypt_path.resolve()))
+            crypt_path.unlink()
 
         # If file IO error occurs #
-        except (IOError, OSError) as io_err:
+        except OSError as io_err:
             print_err(f'Error occurred during {file_decrypt} decryption: {io_err}')
             sys.exit(1)
 
 
 if __name__ == '__main__':
     # Get the current working dir #
-    cwd = Path('.')
-    decrypt_path = cwd / 'DecryptDock'
+    decrypt_path = Path.cwd() / 'DecryptDock'
 
     # If the decryption file dock does not exist #
     if not decrypt_path.exists():
