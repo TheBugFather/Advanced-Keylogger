@@ -5,7 +5,7 @@ import os
 import sys
 import venv
 from pathlib import Path
-from subprocess import Popen, PIPE, TimeoutExpired, CalledProcessError
+from subprocess import Popen, PIPE, TimeoutExpired
 from threading import Thread
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
@@ -15,29 +15,31 @@ from urllib.request import urlretrieve
 PACKAGE_FILENAME = 'packages.txt'
 
 
-def system_cmd(cmd_args: list, timeout_secs: int):
+def system_cmd(cmd: list, exec_time):
     """
-    Executes a system command as a child subprocess.
+    Executes system shell command and returns the output. If improper data type is in command syntax
+    list or error occurs during command execution, the error is displayed via stderr and logged,
+    and False is returned to indicated failed operation.
 
-    :param cmd_args:  The list of command-line args to be executed.
-    :param timeout_secs:  The execution timeout after process hangs too long.
+    :param cmd:  The command to be executed.
+    :param exec_time:  The execution timeout to prevent process hangs.
     :return:  Nothing
     """
-    # Execute the pip upgrade command as child process #
-    with Popen(cmd_args) as command:
-        try:
-            # Timeout child process after 60 seconds #
-            command.communicate(timeout=timeout_secs)
+    try:
+        # Set up child process in context manager, piping output & errors to return variables #
+        with Popen(cmd, stdout=sys.stdout, stderr=sys.stderr) as command:
+            # Execute process for passed in timeout (None=blocking) #
+            command.communicate(timeout=exec_time)
 
-        # If error occurs during pip installation or process times out #
-        except (TimeoutExpired, CalledProcessError, OSError, ValueError) as proc_err:
-            command.kill()
-            command.communicate()
+    # If the process times out #
+    except TimeoutExpired:
+        # Print error and log #
+        print_err(f'Process for {cmd} timed out before finishing execution')
 
-            # If the exception is a error that should be looked into #
-            if not TimeoutExpired:
-                print_err(f'Error occurred during child process execution: {proc_err}')
-                sys.exit(3)
+    # If the input command has data other than string #
+    except TypeError:
+        # Print error and log #
+        print_err(f'Input in {cmd} contains data type other than string')
 
 
 class ExtendedEnvBuilder(venv.EnvBuilder):
@@ -73,10 +75,11 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         url = 'https://github.com/abadger/setuptools/blob/master/ez_setup.py'
         self.install_script(context, 'setuptools', url)
 
-        # clear up the setuptools archive which gets downloaded
+        # Clear up the setuptools archive which gets downloaded #
         pred = lambda o: o.startswith('setuptools-') and o.endswith('.tar.gz')
         files = filter(pred, os.listdir(context.bin_path))
 
+        # Iterate through files in bin path and delete #
         for file in files:
             file = os.path.join(context.bin_path, file)
             os.unlink(file)
@@ -100,39 +103,39 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         """
         os.environ['VIRTUAL_ENV'] = context.env_dir
 
+        # If no setup tools #
         if not self.nodist:
             # Install setup tools #
             self.install_setuptools(context)
 
+        # If no pip and setuptools #
         if not self.nopip and not self.nodist:
-            # Install pip #
+            # Install them #
             self.install_pip(context)
 
         # Get the current working dir #
-        path = Path('.')
+        path = Path.cwd()
         venv_path = Path(context.env_dir)
         # Format the package path #
         package_path = path / PACKAGE_FILENAME
 
         # If the OS is Windows #
         if os.name == 'nt':
-            win_venv_path = venv_path / 'Scripts'
             # Format path for pip installation in venv #
-            pip_path = win_venv_path / 'pip.exe'
+            pip_path = venv_path / 'Scripts' / 'pip.exe'
         # If the OS is Linux #
         else:
-            lin_venv_path = venv_path / 'bin'
             # Format path for pip installation in venv #
-            pip_path = lin_venv_path / 'pip'
+            pip_path = venv_path / 'bin' / 'pip'
 
         # Execute the pip upgrade command as child process #
-        command = [str(pip_path.resolve()), 'install', '--upgrade', 'pip']
+        command = [str(pip_path), 'install', '--upgrade', 'pip']
         system_cmd(command, 60)
 
         # If the package list file exists #
         if package_path.exists():
             # Execute pip -r into venv based on package list #
-            command = [str(pip_path.resolve()), 'install', '-r', str(package_path.resolve())]
+            command = [str(pip_path), 'install', '-r', str(package_path)]
             system_cmd(command, 300)
 
     def reader(self, stream, context):
@@ -147,16 +150,22 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         progress = self.progress
 
         while True:
+            # Read line from subprocess stream #
             proc_stream = stream.readline()
 
+            # If there is no more data to read #
             if not proc_stream:
                 break
 
+            # If progress has no data #
             if progress is not None:
                 progress(proc_stream, context)
+            # If progress is present #
             else:
+                # If not set to verbose #
                 if not self.verbose:
                     sys.stderr.write('.')
+                # If verbosity set #
                 else:
                     sys.stderr.write(proc_stream.decode('utf-8'))
 
@@ -180,7 +189,7 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
 
         # If the URL starts with http #
         if url.lower().startswith('http'):
-            # Download script into the virtual environment's binaries folder
+            # Download script into the virtual environment's binaries folder #
             urlretrieve(url, distpath)
         # Unusual URL detected #
         else:
@@ -194,19 +203,20 @@ class ExtendedEnvBuilder(venv.EnvBuilder):
         else:
             term = ''
 
+        # If progress is set #
         if progress is not None:
             progress(f'Installing {name} .. {term}', 'main')
+        # If progress is not set #
         else:
             sys.stderr.write(f'Installing {name} .. {term}')
             sys.stderr.flush()
 
         args = [context.env_exe, file_name]
 
-        # Install in the virtual environment
+        # Install in the virtual environment #
         with Popen(args, stdout=PIPE, stderr=PIPE, cwd=binpath) as proc:
             thread_1 = Thread(target=self.reader, args=(proc.stdout, 'stdout'))
             thread_1.start()
-
             thread_2 = Thread(target=self.reader, args=(proc.stderr, 'stderr'))
             thread_2.start()
 

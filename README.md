@@ -1,19 +1,17 @@
-# Advanced Keylogger
+<div align="center" style="font-family: monospace">
+<h1>Advanced-Keylogger</h1>
+&#9745;&#65039; Bandit verified &nbsp;|&nbsp; &#9745;&#65039; Synk verified &nbsp;|&nbsp; &#9745;&#65039; Pylint verified 9.89/10
+<br><br>
+
 ![alt text](https://github.com/ngimb64/Advanced-Keylogger/blob/master/Advanced_Keylogger.png?raw=true)
 ![alt text](https://github.com/ngimb64/Advanced-Keylogger/blob/master/AdvancedKeylogger.png?raw=true)
-
-&#9745;&#65039; Bandit verified<br>
-&#9745;&#65039; Synk verified<br>
-&#9745;&#65039; Pylint verified 9.89/10
+</div>
 
 ## Notice
 > This tool may be used for legal purposes only.<br>
 > Users take full responsibility for any actions performed using this tool.<br> 
 > The author accepts no liability for damage caused by this tool.<br>
 > If these terms are not acceptable to you, then do not use this tool.
-
-## Prereqs
-This program runs on Windows 10 and Debian-based Linux, written in Python 3.8 and updated to version 3.10.6
 
 ## Purpose
 As a network and info-sec enthusiast the purpose of this project was originally to make a keylogger.<br>
@@ -38,6 +36,15 @@ Tutorial can be found at https://cybr.com/ethical-hacking-archives/how-i-made-a-
 - After all the .txt and .xml files are grouped together and encrypted to protect sensitive data
 - Then by individual directory, the files are grouped and sent through email by file type with regex magic
 - Finally, the Log directory is deleted and the program loops back to the beginning to repeat the same process
+
+### License
+The program is licensed under [GNU Public License v3.0](LICENSE.md)
+
+### Contributions or Issues
+[CONTRIBUTING](CONTRIBUTING.md)
+
+## Prereqs
+This program runs on Windows 10 and Debian-based Linux, written in Python 3.8 and updated to version 3.10.6
 
 ## Installation
 - Run the setup.py script to build a virtual environment and install all external packages in the created venv.
